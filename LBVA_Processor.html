@@ -270,6 +270,58 @@ const KEEP_DATA_COLS = new Set([
  'Date Of Birth','Phone Number','Mobility','Earliest Departure Time',
  'Appointment Time','Pickup Address','Dropoff Address','VA Notes'
 ]);
+const VETERAN_OVERRIDES = [
+ { name: ['allen', 'merrell'],     days: [1,3,5], pickup: '11:15', return_: '16:00' },
+ { name: ['fabio', 'villareal'],   days: [1,3,5], pickup: '06:00', return_: '11:30' },
+ { name: ['ramon', 'paredes'],     days: [1,3,5], pickup: '09:00', return_: null    },
+ { name: ['nonilon', 'penalba'],   days: [2,4,6], pickup: '05:00', return_: null    },
+ { name: ['vincent', 'donini'],    days: [2,4,6], pickup: '06:30', return_: null    },
+ { name: ['joe', 'morris'],        days: [2,4,6], pickup: '08:15', return_: null    },
+];
+
+const DIALYSIS_EXCLUDES = [
+ ['darryl', 'linder'],
+ ['kevin', 'curry'],
+ ['charles', 'woodland'],
+];
+
+function findVeteranOverride(passenger, dayOfWeek, notes) {
+ if (!passenger) return null;
+ const p = String(passenger).toLowerCase();
+ const isDialysis = notes && /dialysis/i.test(String(notes));
+ if (!isDialysis) return null;
+ for (const v of VETERAN_OVERRIDES) {
+  if (v.name.every(part => p.includes(part)) && v.days.includes(dayOfWeek)) return v;
+ }
+ return null;
+}
+
+function isDialysisExcluded(passenger, dayOfWeek, notes) {
+ if (!passenger) return false;
+ if (![2,4,6].includes(dayOfWeek)) return false;
+ if (!notes || !/dialysis/i.test(String(notes))) return false;
+ const p = String(passenger).toLowerCase();
+ return DIALYSIS_EXCLUDES.some(parts => parts.every(pt => p.includes(pt)));
+}
+
+function getDayOfWeekFromCell(cellVal) {
+ if (!cellVal) return -1;
+ const s = String(cellVal);
+ const m = s.match(/(\w+),\s*(\d+)\s+(\w+)\s+(\d+)/);
+ if (!m) return -1;
+ const days = { sun:0, mon:1, tue:2, wed:3, thu:4, fri:5, sat:6 };
+ const d = days[m[1].toLowerCase().slice(0,3)];
+ return d === undefined ? -1 : d;
+}
+
+function applyOverrideTime(apptVal, newTime) {
+ const apptStr = String(apptVal);
+ const dayMatch = apptStr.match(/^(\w+,\s*\d+\s+\w+\s+\d+)/);
+ const tzMatch = apptStr.match(/([+-]\d{4})$/);
+ if (!dayMatch || !tzMatch) return null;
+ return dayMatch[1] + ' ' + newTime + ':00 ' + tzMatch[1];
+}
+
 const OUT_COLS = [
  'Trip ID','Vendor Trip ID','Trip Type','Passenger Member ID','Passenger',
  'Date Of Birth','Phone Number','Mobility','Extra','Estimated Pickup Time',
@@ -498,7 +550,8 @@ function processFile() {
  if (tripTypeI === undefined) throw new Error('Could not find "Trip Type" column.');
  setProgress(45, 'Processing trips...');
  const stats = { total: 0, extracted: 0, vaLB: 0, copied: 0, stretcher: 0, wheelchair: 0 };
- const alerts = { bariatric: [], waitReturn: [] };
+ const alerts = { bariatric: [], waitReturn: [], excluded: [] };
+ let excludedCount = 0;
  let canceledCount = 0;
  let fileDate = null;
  const stretcherRows = [], wheelchairRows = [];
@@ -520,6 +573,13 @@ function processFile() {
  if (apptVal && String(apptVal).trim().toUpperCase() === 'N/A') { canceledCount++; continue; }
  stats.total++;
  const passenger = idx['Passenger'] !== undefined ? r[idx['Passenger']] : 'Unknown';
+ const tripDow = getDayOfWeekFromCell(apptVal);
+ if (isDialysisExcluded(passenger, tripDow, notes)) {
+  alerts.excluded.push(passenger + ' (' + tripType + ')');
+  stats.total--;
+  excludedCount++;
+  continue;
+ }
  if (isBariatric(notes)) alerts.bariatric.push(`${passenger} (${tripType})`);
  if (tripType === 'Return' && isWaitReturn(notes)) alerts.waitReturn.push(`${passenger} (${tripType})`);
  const doAddr = idx['Dropoff Address'] !== undefined ? r[idx['Dropoff Address']] : null;
@@ -593,7 +653,7 @@ function processFile() {
  blobStretcher = makeBlob(stretcherRows);
  blobWheelchair = makeBlob(wheelchairRows);
  setProgress(100, 'Done!');
- if (alerts.bariatric.length > 0 || alerts.waitReturn.length > 0) {
+ if (alerts.bariatric.length > 0 || alerts.waitReturn.length > 0 || alerts.excluded.length > 0) {
  let alertHtml = '';
  if (alerts.bariatric.length > 0) {
   alertHtml += `<div class="alert-section"><div class="alert-title">⚠️ Bariatric / Heavy Veterans (${alerts.bariatric.length})</div>`;
@@ -608,7 +668,7 @@ function processFile() {
  document.getElementById('alertContent').innerHTML = alertHtml;
  document.getElementById('alerts').classList.add('visible');
 }
-if (alerts.bariatric.length > 0 || alerts.waitReturn.length > 0) {
+if (alerts.bariatric.length > 0 || alerts.waitReturn.length > 0 || alerts.excluded.length > 0) {
  let alertHtml = '';
  if (alerts.bariatric.length > 0) {
   alertHtml += '<div class="alert-section"><div class="alert-title">⚠️ Bariatric / Heavy Veterans (' + alerts.bariatric.length + ')</div>';
@@ -618,6 +678,11 @@ if (alerts.bariatric.length > 0 || alerts.waitReturn.length > 0) {
  if (alerts.waitReturn.length > 0) {
   alertHtml += '<div class="alert-section"><div class="alert-title">⏳ Wait & Return (' + alerts.waitReturn.length + ')</div>';
   alerts.waitReturn.forEach(n => { alertHtml += '<div class="alert-item">' + n + '</div>'; });
+  alertHtml += '</div>';
+ }
+ if (alerts.excluded.length > 0) {
+  alertHtml += '<div class="alert-section"><div class="alert-title">🚫 Excluded from output (' + alerts.excluded.length + ')</div>';
+  alerts.excluded.forEach(n => { alertHtml += '<div class="alert-item">' + n + '</div>'; });
   alertHtml += '</div>';
  }
  document.getElementById('alertContent').innerHTML = alertHtml;
