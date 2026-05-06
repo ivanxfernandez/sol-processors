@@ -524,7 +524,14 @@ function processFile() {
  if (tripType === 'Return' && isWaitReturn(notes)) alerts.waitReturn.push(`${passenger} (${tripType})`);
  const doAddr = idx['Dropoff Address'] !== undefined ? r[idx['Dropoff Address']] : null;
  if (tripType === 'Return') {
- if (isVALongBeachDropoff(notes, doAddr) && !isDischargeOrAirport(notes, doAddr)) {
+ const passenger = idx['Passenger'] !== undefined ? r[idx['Passenger']] : null;
+ const dow = getDayOfWeekFromCell(apptVal);
+ const override = findVeteranOverride(passenger, dow, notes);
+ if (override && override.return_) {
+ if (earliestI !== undefined) r[earliestI] = applyOverrideTime(apptVal, override.return_);
+ if (apptI !== undefined) r[apptI] = null;
+ stats.extracted++;
+ } else if (isVALongBeachDropoff(notes, doAddr) && !isDischargeOrAirport(notes, doAddr)) {
  if (earliestI !== undefined) r[earliestI] = apptVal;
  stats.vaLB++;
  } else {
