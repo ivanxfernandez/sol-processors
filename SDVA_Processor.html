@@ -270,7 +270,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     <button class="btn-reset" onclick="fullReset()">Process another file</button>
   </div>
 </div>
-<script>if (typeof XLSX === 'undefined') {
+<script>function cleanAddr(a) { return a ? String(a).replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim() : a; }
+if (typeof XLSX === 'undefined') {
  var s = document.createElement('script');
  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
  document.head.appendChild(s);
@@ -288,6 +289,9 @@ const OUT_COLS = [
   'Wait Time (Minutes)','Unloaded Mileage','Invoice Number',
   'Invoice Date','Actual Cost'
 ];
+
+function cleanName(name) { return name ? String(name).replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim() : name; }
+
 
 const KEEP_DATA_COLS = new Set([
   'Trip ID','Trip Type','Passenger Member ID','Passenger',
@@ -590,7 +594,9 @@ function _doProcess() {
       }
 
       // Alerts
-      const passenger = idx['Passenger'] !== undefined ? r[idx['Passenger']] : 'Unknown';
+      const _rawPassenger = idx['Passenger'] !== undefined ? r[idx['Passenger']] : 'Unknown';
+ const passenger = cleanName(_rawPassenger);
+ if (idx['Passenger'] !== undefined && _rawPassenger && _rawPassenger !== 'Unknown') r[idx['Passenger']] = passenger;
       const tripType  = idx['Trip Type']  !== undefined ? r[idx['Trip Type']]  : '';
       if (isBariatric(notes)) alerts.bariatric.push(`${passenger} (${tripType})`);
       if (tripType === 'Return' && isWaitReturn(notes)) alerts.waitReturn.push(`${passenger} (${tripType})`);
@@ -602,7 +608,10 @@ function _doProcess() {
       // Build output row
       const outRow = OUT_COLS.map(col => {
         if (!KEEP_DATA_COLS.has(col)) return null;
-        const ci = idx[col]; return ci !== undefined ? r[ci] : null;
+        const ci = idx[col]; if (ci === undefined) return null;
+        const v = r[ci];
+        if (col === 'Pickup Address' || col === 'Dropoff Address') return cleanAddr(v);
+        return v;
       });
 
       const sheet = getSheet(mobility, notes);

@@ -259,7 +259,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     <button class="btn-reset" onclick="fullReset()">Process another file</button>
   </div>
 </div>
-<script>if (typeof XLSX === 'undefined') {
+<script>function cleanAddr(a) { return a ? String(a).replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim() : a; }
+if (typeof XLSX === 'undefined') {
  var s = document.createElement('script');
  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
  document.head.appendChild(s);
@@ -333,6 +334,9 @@ const OUT_COLS = [
  'Wait Time (Minutes)','Unloaded Mileage','Invoice Number',
  'Invoice Date','Actual Cost'
 ];
+
+function cleanName(name) { return name ? String(name).replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim() : name; }
+
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 let mode = 'single';
 let dataSingle = null, dataOld = null, dataNew = null;
@@ -461,8 +465,11 @@ function extractPrefPickup(notes) {
  return null;
 }
 function isVALongBeachDropoff(notes, doAddr) {
- if (doAddr && (String(doAddr).includes('5901') || /long\s*beach\s*va|va\s*long\s*beach/i.test(String(doAddr)))) return true;
- return notes && /drop\s*off.*?VA\s+Long\s+Beach/is.test(String(notes));
+ // Must have actual dropoff address pointing to VA — notes alone aren't reliable
+ // because incoming/return trips often share notes
+ if (!doAddr) return false;
+ const d = String(doAddr);
+ return d.includes('5901') || /long\s*beach\s*va|va\s*long\s*beach/i.test(d);
 }
 function isDischargeOrAirport(notes, doAddr) {
  const n = String(notes || '').toUpperCase();
@@ -584,7 +591,9 @@ function processFile() {
  if (tripType === 'Return' && isWaitReturn(notes)) alerts.waitReturn.push(`${passenger} (${tripType})`);
  const doAddr = idx['Dropoff Address'] !== undefined ? r[idx['Dropoff Address']] : null;
  if (tripType === 'Return') {
- const passenger = idx['Passenger'] !== undefined ? r[idx['Passenger']] : null;
+ const _rawPassenger = idx['Passenger'] !== undefined ? r[idx['Passenger']] : null;
+ const passenger = cleanName(_rawPassenger);
+ if (idx['Passenger'] !== undefined && _rawPassenger) r[idx['Passenger']] = passenger;
  const dow = getDayOfWeekFromCell(apptVal);
  const override = findVeteranOverride(passenger, dow, notes);
  if (override && override.return_) {
@@ -613,6 +622,18 @@ function processFile() {
    const tzMatch = apptStr.match(/([+-]\d{4})$/);
    const dayMatch = apptStr.match(/^(\w+, \d+ \w+ \d+)/);
    if (timeMatch && tzMatch && dayMatch) {
+    const passengerInc = idx['Passenger'] !== undefined ? r[idx['Passenger']] : null;
+    const dowInc = getDayOfWeekFromCell(apptVal);
+    const overrideInc = findVeteranOverride(passengerInc, dowInc, notes);
+    const apptTimeOnly = timeMatch[1].padStart(2, '0') + ':' + timeMatch[2];
+    if (overrideInc) {
+     r[earliestI] = applyOverrideTime(apptVal, overrideInc.pickup);
+     if (notesI !== undefined) {
+      const existing = r[notesI] ? String(r[notesI]).trim() : '';
+      r[notesI] = existing ? existing + ' | Appt: ' + apptTimeOnly : 'Appt: ' + apptTimeOnly;
+     }
+     r[apptI] = null;
+    } else {
     let totalMins = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]);
     const doAddr = idx['Dropoff Address'] !== undefined ? r[idx['Dropoff Address']] : null;
     const distI = idx['Estimated Distance (miles)'];
@@ -636,12 +657,16 @@ function processFile() {
      r[notesI] = existing ? existing + ' | Appt: ' + apptTimeOnly : 'Appt: ' + apptTimeOnly;
     }
     r[apptI] = null;
+    }
    }
   }
  }
  const outRow = OUT_COLS.map(col => {
  if (!KEEP_DATA_COLS.has(col)) return null;
- const ci = idx[col]; return ci !== undefined ? r[ci] : null;
+ const ci = idx[col]; if (ci === undefined) return null;
+ const v = r[ci];
+ if (col === 'Pickup Address' || col === 'Dropoff Address') return cleanAddr(v);
+ return v;
  });
  if (isStretcher(mobility)) { stretcherRows.push(outRow); stats.stretcher++; }
  else { wheelchairRows.push(outRow); stats.wheelchair++; }

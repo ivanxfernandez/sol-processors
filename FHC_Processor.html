@@ -204,7 +204,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     <button class="btn-reset" onclick="fullReset()">Process more files</button>
   </div>
 </div>
-<script>if (typeof XLSX === 'undefined') {
+<script>function cleanAddr(a) { return a ? String(a).replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim() : a; }
+if (typeof XLSX === 'undefined') {
  var s = document.createElement('script');
  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
  document.head.appendChild(s);
@@ -325,7 +326,7 @@ function normalizeMobility(raw) {
 
 function formatName(raw) {
  if (!raw) return '';
- let name = String(raw).replace(/\u00a0/g, ' ').trim();
+ let name = String(raw).replace(/\([^)]*\)/g, ' ').replace(/\u00a0/g, ' ').trim();
  if (name.includes(',')) {
   const parts = name.split(',');
   const last = parts[0].trim();
@@ -519,8 +520,8 @@ function processFiles() {
  'Latest Arrival Time': null,
  'Appointment Time': null,
  'Buffer (minutes)': null,
- 'Pickup Address': trip.puAddr || null,
- 'Dropoff Address': trip.doAddr || null,
+ 'Pickup Address': cleanAddr(trip.puAddr) || null,
+ 'Dropoff Address': cleanAddr(trip.doAddr) || null,
  'Estimated Distance (miles)': null,
  'Third Party': null,
  'Contract Name': null,
