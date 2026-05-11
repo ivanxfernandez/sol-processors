@@ -152,6 +152,113 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     .btn-skip { background: #2a2f42; color: #9ba3bb; }
     .btn-skip:hover { background: #353a52; }
   }
+
+  /* Stage 2: Animations */
+  @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  .file-pill, .alerts.visible, .results.visible, .error-box.visible, .prompt-box.visible {
+    animation: fadeSlideIn 0.25s ease-out;
+  }
+  .stat .value { transition: color 0.3s; }
+  .btn, .btn-download, .btn-reset, .mode-tab, .drop-zone {
+    transition: transform 0.15s, background 0.2s, border-color 0.2s, filter 0.2s;
+  }
+  .btn:active:not(:disabled), .btn-download:active { transform: translateY(1px); }
+  .mode-tab:active, .drop-zone:active { transform: scale(0.99); }
+
+  /* Stage 2: Keyboard shortcut hints */
+  .kbd-hint { font-size: 10px; color: #888; margin-left: 6px; opacity: 0.7; font-family: monospace; }
+  @media (prefers-color-scheme: dark) { .kbd-hint { color: #6b7a99; } }
+
+  /* Stage 2: Mobile responsive */
+  @media (max-width: 600px) {
+    body { padding: 1rem; }
+    .card { padding: 1.5rem; border-radius: 12px; }
+    .header { gap: 10px; margin-bottom: 1.25rem; }
+    .header h1 { font-size: 17px; }
+    .logo { width: 38px; height: 38px; }
+    .mode-tabs { gap: 6px; }
+    .mode-tab { padding: 10px 6px; }
+    .mode-tab .tab-title { font-size: 12px; }
+    .mode-tab .tab-sub { font-size: 10px; }
+    .two-drop { grid-template-columns: 1fr; }
+    .drop-zone { padding: 1.5rem 0.75rem; }
+    .drop-zone h2 { font-size: 13px; }
+    .result-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    .stat { padding: 10px 12px; }
+    .stat .value { font-size: 18px; }
+    .header h1 a { font-size: 11px !important; padding: 4px 8px !important; }
+  }
+
+  /* Stage 3: Toast notifications */
+  .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; max-width: 360px; pointer-events: none; }
+  .toast { background: #fff; border-radius: 10px; padding: 12px 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); border-left: 4px solid var(--accent); display: flex; align-items: flex-start; gap: 10px; font-size: 13px; color: #222; pointer-events: auto; animation: toastIn 0.25s cubic-bezier(.34,1.56,.64,1); }
+  .toast.success { border-left-color: #22c55e; }
+  .toast.error   { border-left-color: #ef4444; }
+  .toast.warning { border-left-color: #f5a623; }
+  .toast-icon { flex-shrink: 0; width: 18px; height: 18px; margin-top: 1px; }
+  .toast-msg { flex: 1; line-height: 1.4; word-break: break-word; }
+  .toast-close { background: none; border: none; cursor: pointer; color: #999; padding: 0 0 0 4px; font-size: 18px; line-height: 1; flex-shrink: 0; }
+  .toast-close:hover { color: #555; }
+  .toast.fade-out { animation: toastOut 0.2s ease-in forwards; }
+  @keyframes toastIn  { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes toastOut { to { opacity: 0; transform: translateX(40px); } }
+
+  /* Stage 3: Trip preview */
+  .preview-wrap { display: none; margin-top: 1rem; }
+  .preview-wrap.visible { display: block; animation: fadeSlideIn 0.25s ease-out; }
+  .preview-tabs { display: flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap; }
+  .preview-tab { padding: 6px 10px; font-size: 12px; border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; font-weight: 500; color: #555; transition: all 0.15s; }
+  .preview-tab:hover { border-color: var(--accent); }
+  .preview-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .preview-table-wrap { max-height: 360px; overflow: auto; border: 1px solid #e5e7eb; border-radius: 8px; }
+  .preview-table { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 700px; }
+  .preview-table th { background: var(--accent-bg); color: #444; text-align: left; padding: 8px; position: sticky; top: 0; font-weight: 600; border-bottom: 1px solid var(--accent-border); white-space: nowrap; }
+  .preview-table td { padding: 6px 8px; border-bottom: 1px solid #f0f0f0; color: #444; white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+  .preview-table tr:hover td { background: #fafafa; }
+  .preview-footer { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #888; margin-top: 8px; flex-wrap: wrap; gap: 8px; }
+  .preview-footer button { background: none; border: 1px solid #ddd; border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; color: #555; }
+  .preview-footer button:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-preview { width: 100%; padding: 10px; background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent-border); border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; transition: filter 0.15s; }
+  .btn-preview:hover { filter: brightness(0.96); }
+  .btn-preview svg { width: 14px; height: 14px; stroke: var(--accent); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  @media (prefers-color-scheme: dark) {
+    .toast { background: #1a1d27; color: #e0e4f0; box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
+    .toast-close { color: #6b7a99; }
+    .toast-close:hover { color: #e0e4f0; }
+    .preview-tab { background: #12151f; color: #9ba3bb; border-color: #2a2f42; }
+    .preview-table-wrap { border-color: #2a2f42; }
+    .preview-table th { background: #12151f; color: #e0e4f0; border-color: #2a2f42; }
+    .preview-table td { color: #9ba3bb; border-color: #2a2f42; }
+    .preview-table tr:hover td { background: #1f2330; }
+    .preview-footer { color: #6b7a99; }
+    .preview-footer button { background: #12151f; border-color: #2a2f42; color: #9ba3bb; }
+  }
+
+  @media (max-width: 600px) {
+    .toast-container { top: 8px; right: 8px; left: 8px; max-width: none; }
+    .preview-table { min-width: 0; }
+  }
+
+  /* Stage 4 UI polish */
+  .card { position: relative; }
+  .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--accent); border-radius: 16px 16px 0 0; }
+
+  .result-grid .stat.primary {
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 18%, transparent), color-mix(in srgb, var(--accent) 6%, transparent));
+    border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+  .result-grid .stat.primary .label { color: var(--accent); font-weight: 600; opacity: 0.9; }
+  .result-grid .stat.primary .value { font-size: 28px; }
+
+  .kbd-hint { display: inline-block; padding: 1px 6px; border: 1px solid currentColor; border-radius: 4px; font-size: 10px; margin-left: 8px; opacity: 0.55; font-family: 'DM Mono', ui-monospace, monospace; font-weight: 500; line-height: 1.2; vertical-align: 1px; }
+
+  @media (prefers-color-scheme: dark) {
+    .result-grid .stat.primary { border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+  }
+  @media (max-width: 600px) {
+    .result-grid .stat.primary .value { font-size: 22px; }
+  }
 </style>
 </head>
 <body>
@@ -182,7 +289,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       <button class="btn-skip" onclick="resolvePrompt(false)">No, skip them</button>
     </div>
   </div>
-  <button class="btn" id="processBtn" disabled onclick="processFiles()">Process Files</button>
+  <button class="btn" id="processBtn" disabled onclick="processFiles()">Process Files<span class="kbd-hint">⏎</span></button>
 
   <div class="progress-wrap" id="progressWrap">
     <div class="progress-label" id="progressLabel">Processing...</div>
@@ -191,16 +298,123 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 
   <div class="results" id="results">
     <div class="result-grid">
-      <div class="stat"><div class="label">Total trips</div><div class="value" id="statTotal">0</div></div>
+      <div class="stat primary"><div class="label">Total trips</div><div class="value" id="statTotal">0</div></div>
       <div class="stat"><div class="label">Ambulatory</div><div class="value" id="statAmb">0</div></div>
       <div class="stat"><div class="label">Wheelchair</div><div class="value" id="statWC">0</div></div>
     </div>
     <div class="breakdown" id="breakdown"></div>
-    <button class="btn-download" id="downloadBtn"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg> Download processed file</button>
-    <button class="btn-reset" onclick="fullReset()">Process more files</button>
+    <button class="btn-preview" onclick="togglePreview()"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Preview trips before download</button>
+    <div class="preview-wrap" id="previewWrap"></div>
+    <button class="btn-download" id="downloadBtn" style="margin-top:10px"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg> Download processed file</button>
+    <button class="btn-reset" onclick="fullReset()">Process more files<span class="kbd-hint">esc</span></button>
   </div>
 </div>
-<script>function cleanAddr(a) { return a ? String(a).replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim() : a; }
+<script>
+// Stage 2: Folder drag support
+async function getAllFilesFromDrop(items) {
+  const files = [];
+  async function traverse(entry) {
+    if (entry.isFile) {
+      await new Promise(res => entry.file(f => { files.push(f); res(); }));
+    } else if (entry.isDirectory) {
+      const reader = entry.createReader();
+      const entries = await new Promise(res => reader.readEntries(res));
+      for (const ent of entries) await traverse(ent);
+    }
+  }
+  for (const item of items) {
+    const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+    if (entry) await traverse(entry); else { const f = item.getAsFile(); if (f) files.push(f); }
+  }
+  return files;
+}
+
+function cleanAddr(a) { return a ? String(a).replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim() : a; }
+
+/* Stage 3: Toast notifications */
+const TOAST_SVG = {
+ success: '<svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
+ error:   '<svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>',
+ warning: '<svg viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+ info:    '<svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+};
+function _toastContainer() {
+ let c = document.getElementById('toastContainer');
+ if (!c) { c = document.createElement('div'); c.id = 'toastContainer'; c.className = 'toast-container'; document.body.appendChild(c); }
+ return c;
+}
+function toast(msg, type, timeoutMs) {
+ type = type || 'info';
+ const c = _toastContainer();
+ const t = document.createElement('div');
+ t.className = 'toast ' + type;
+ const icon = document.createElement('span'); icon.className = 'toast-icon'; icon.innerHTML = TOAST_SVG[type] || TOAST_SVG.info;
+ const m = document.createElement('span'); m.className = 'toast-msg'; m.textContent = msg;
+ const btn = document.createElement('button'); btn.className = 'toast-close'; btn.setAttribute('aria-label','Close'); btn.textContent = '×';
+ const close = () => { t.classList.add('fade-out'); setTimeout(() => t.remove(), 200); };
+ btn.onclick = close;
+ t.appendChild(icon); t.appendChild(m); t.appendChild(btn);
+ c.appendChild(t);
+ const dt = timeoutMs != null ? timeoutMs : (type === 'error' ? 6000 : type === 'warning' ? 5000 : 3500);
+ if (dt > 0) setTimeout(close, dt);
+ return t;
+}
+
+/* Stage 3: Trip preview */
+const PREVIEW_COLS = ['Trip ID','Passenger','Mobility','Pickup Address','Dropoff Address','Earliest Departure Time','Appointment Time'];
+const _previewState = { sheets: [], active: 0, limit: 50 };
+function _esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]); }
+function setPreviewSheets(sheets) { _previewState.sheets = sheets || []; _previewState.active = 0; _previewState.limit = 50; const wrap = document.getElementById('previewWrap'); if (wrap) wrap.classList.remove('visible'); }
+function renderPreview() {
+ const wrap = document.getElementById('previewWrap');
+ if (!wrap) return;
+ const { sheets, active, limit } = _previewState;
+ if (!sheets.length) { wrap.classList.remove('visible'); return; }
+ const sheet = sheets[active];
+ if (!sheet) return;
+ const colIdx = PREVIEW_COLS.map(c => OUT_COLS.indexOf(c));
+ const shown = sheet.rows.slice(0, limit);
+ const tabsHtml = sheets.length > 1
+  ? '<div class="preview-tabs">' + sheets.map((s, i) =>
+     '<button class="preview-tab' + (i === active ? ' active' : '') + '" onclick="setPreviewTab(' + i + ')">' + _esc(s.label) + ' (' + s.rows.length + ')</button>'
+    ).join('') + '</div>'
+  : '';
+ const rowsHtml = shown.length
+  ? shown.map(r => '<tr>' + colIdx.map(i => {
+     const v = i >= 0 && r ? (r[i] == null ? '' : r[i]) : '';
+     return '<td title="' + _esc(v) + '">' + _esc(v) + '</td>';
+    }).join('') + '</tr>').join('')
+  : '<tr><td colspan="' + PREVIEW_COLS.length + '" style="text-align:center;padding:24px;color:#888">No rows</td></tr>';
+ const headHtml = '<tr>' + PREVIEW_COLS.map(c => '<th>' + c + '</th>').join('') + '</tr>';
+ const more = sheet.rows.length > shown.length;
+ const footerHtml = '<div class="preview-footer"><span>Showing ' + shown.length + ' of ' + sheet.rows.length + ' rows</span>' +
+  (more ? '<button onclick="showAllPreview()">Show all</button>' : (sheet.rows.length > 50 ? '<button onclick="collapsePreview()">Collapse</button>' : '')) + '</div>';
+ wrap.innerHTML = tabsHtml + '<div class="preview-table-wrap"><table class="preview-table"><thead>' + headHtml + '</thead><tbody>' + rowsHtml + '</tbody></table></div>' + footerHtml;
+}
+function setPreviewTab(i) { _previewState.active = i; _previewState.limit = 50; renderPreview(); }
+function showAllPreview() { _previewState.limit = Infinity; renderPreview(); }
+function collapsePreview() { _previewState.limit = 50; renderPreview(); }
+function togglePreview() {
+ const wrap = document.getElementById('previewWrap');
+ if (!wrap) return;
+ if (wrap.classList.contains('visible')) wrap.classList.remove('visible');
+ else { renderPreview(); wrap.classList.add('visible'); }
+}
+
+/* Stage 4: Out-of-state detection */
+function isOutOfState(addr) {
+ if (!addr) return null;
+ const s = String(addr);
+ const stMatch = s.match(/,\s*([A-Z]{2})\b[^,]*?\b\d{5}\b/);
+ if (stMatch) return stMatch[1] !== 'CA' ? stMatch[1] : null;
+ const zipMatch = s.match(/\b(\d{5})\b/);
+ if (zipMatch) {
+  const z = parseInt(zipMatch[1]);
+  if (z >= 90000 && z <= 96199) return null;
+  return 'non-CA';
+ }
+ return null;
+}
 if (typeof XLSX === 'undefined') {
  var s = document.createElement('script');
  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
@@ -555,7 +769,7 @@ dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.
 fileInput.addEventListener('change', e => handleFiles(e.target.files));
 function handleFiles(fileList) {
  for (const file of fileList) {
- if (!file.name.match(/\.(xlsx?|csv)$/i)) continue;
+ if (!file.name.match(/\.(xlsx?|csv)$/i)) { toast(file.name + ' is not .xlsx/.csv', 'error'); continue; }
  const reader = new FileReader();
  reader.onload = e => {
  try {
@@ -567,8 +781,9 @@ function handleFiles(fileList) {
  }
  loadedFiles.push({ name: file.name, rows });
  renderFileList();
+ toast('Loaded ' + file.name, 'success');
  document.getElementById('processBtn').disabled = false;
- } catch(err) { showError('Could not read ' + file.name + ': ' + err.message); }
+ } catch(err) { showError('Could not read ' + file.name + ': ' + err.message); toast('Could not read ' + file.name, 'error'); }
  };
  reader.readAsArrayBuffer(file);
  }
@@ -594,6 +809,7 @@ function fullReset() {
  renderFileList();
  document.getElementById('results').classList.remove('visible');
  document.getElementById('progressWrap').classList.remove('visible');
+ const pw = document.getElementById('previewWrap'); if (pw) pw.classList.remove('visible');
  document.getElementById('processBtn').disabled = true;
  hideError();
 }
@@ -636,6 +852,7 @@ async function _doProcess() {
  if (allTrips.length === 0) throw new Error('No trips found in the uploaded files.');
  setProgress(75, 'Building output...');
  const outputRows = [];
+ const outOfStateTrips = [];
  for (const trip of allTrips) {
  if (!trip.name) continue;
  const tz = getCaliforniaTZ(trip.dateStr);
@@ -646,6 +863,12 @@ async function _doProcess() {
  stats.total++;
  if (mobility === 'Ambulatory') stats.ambulatory++;
  else stats.wheelchair++;
+ const puSt = isOutOfState(trip.puAddr);
+ const doSt = isOutOfState(trip.doAddr);
+ if (puSt || doSt) {
+  const dir = puSt && doSt ? `pickup ${puSt}, dropoff ${doSt}` : puSt ? `pickup ${puSt}` : `dropoff ${doSt}`;
+  outOfStateTrips.push(`${trip.name} — ${dir}`);
+ }
  const row = {
  'Trip ID': tripId, 'Vendor Trip ID': null, 'Trip Type': null,
  'Passenger Member ID': memberId, 'Passenger': trip.name,
@@ -668,6 +891,7 @@ async function _doProcess() {
  outputRows.push(OUT_COLS.map(col => row[col] !== undefined ? row[col] : null));
  }
  setProgress(90, 'Writing file...');
+ setPreviewSheets([{ label: 'Trips', rows: outputRows }]);
  const dateForName = firstDate || new Date().toISOString().slice(0, 10);
  const [y, mo, d] = dateForName.split('-');
  const outName = `NCTD_${mo}-${d}-${y}.xlsx`;
@@ -677,11 +901,16 @@ async function _doProcess() {
  const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
  setProgress(100, 'Done!');
+ toast('Processed ' + stats.total + ' trip' + (stats.total === 1 ? '' : 's') + ' from ' + fileSummary.length + ' file' + (fileSummary.length === 1 ? '' : 's'), 'success');
  document.getElementById('statTotal').textContent = stats.total;
  document.getElementById('statAmb').textContent = stats.ambulatory;
  document.getElementById('statWC').textContent = stats.wheelchair;
  let bdHtml = '<h3>Files processed</h3>';
  for (const f of fileSummary) bdHtml += `<div class="breakdown-row"><span class="desc">${f.name}</span><span class="count">${f.count} trips</span></div>`;
+ if (outOfStateTrips.length > 0) {
+  bdHtml += `<div class="breakdown-row" style="color:#b8721a"><span class="desc">⚑ Out-of-state trips</span><span class="count">${outOfStateTrips.length}</span></div>`;
+  toast(outOfStateTrips.length + ' out-of-state trip' + (outOfStateTrips.length === 1 ? '' : 's') + ' detected: ' + outOfStateTrips.slice(0, 3).join('; ') + (outOfStateTrips.length > 3 ? '...' : ''), 'warning', 8000);
+ }
  document.getElementById('breakdown').innerHTML = bdHtml;
  document.getElementById('downloadBtn').onclick = () => triggerDownload(blob, outName);
  document.getElementById('results').classList.add('visible');
@@ -691,9 +920,21 @@ async function _doProcess() {
  }, 500);
  } catch(err) {
  showError('Error: ' + err.message);
+ toast(err.message, 'error');
  document.getElementById('progressWrap').classList.remove('visible');
  document.getElementById('processBtn').disabled = false;
  }
-}</script>
+}
+
+// Stage 2: Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'Escape') { if (typeof fullReset === 'function') fullReset(); }
+  if (e.key === 'Enter' && !e.shiftKey) {
+    const btn = document.getElementById('processBtn');
+    if (btn && !btn.disabled) { e.preventDefault(); btn.click(); }
+  }
+});
+</script>
 </body>
 </html>

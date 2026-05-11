@@ -36,13 +36,6 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     --accent-light: #f5c5c7;
   }
 
-  :root {
-    --accent: #1b5e3b;
-    --accent-bg: #f0f7f3;
-    --accent-border: #c5dece;
-    --accent-light: #c8e6d4;
-  }
-
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
   .card { background: #fff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); padding: 2.5rem; width: 100%; max-width: 680px; }
@@ -80,8 +73,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   .drop-zone h2 { font-size: 14px; font-weight: 600; color: #222; margin-bottom: 3px; }
   .drop-zone p { font-size: 12px; color: #888; }
   .file-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 1.25rem; }
-  .file-pill { display: none;
-  .file-pill.visible { display: flex; } align-items: center; gap: 8px; padding: 8px 12px; background: var(--accent-bg); border-radius: 8px; border: 1px solid var(--accent-border); min-width: 0; }
+  .file-pill { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--accent-bg); border-radius: 8px; border: 1px solid var(--accent-border); min-width: 0; }
   .file-pill svg { width: 15px; height: 15px; stroke: var(--accent); fill: none; stroke-width: 2; flex-shrink: 0; }
   .file-pill span { font-size: 12px; color: var(--accent); font-weight: 500; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .file-pill .remove { background: none; border: none; cursor: pointer; color: #999; font-size: 15px; flex-shrink: 0; }
@@ -173,6 +165,126 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     .btn-skip { background: #2a2f42; color: #9ba3bb; }
     .btn-skip:hover { background: #353a52; }
   }
+
+  /* Stage 2: Animations */
+  @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  .file-pill, .alerts.visible, .results.visible, .error-box.visible, .prompt-box.visible {
+    animation: fadeSlideIn 0.25s ease-out;
+  }
+  .stat .value { transition: color 0.3s; }
+  .btn, .btn-download, .btn-reset, .mode-tab, .drop-zone {
+    transition: transform 0.15s, background 0.2s, border-color 0.2s, filter 0.2s;
+  }
+  .btn:active:not(:disabled), .btn-download:active { transform: translateY(1px); }
+  .mode-tab:active, .drop-zone:active { transform: scale(0.99); }
+
+  /* Stage 2: Keyboard shortcut hints */
+  .kbd-hint { font-size: 10px; color: #888; margin-left: 6px; opacity: 0.7; font-family: monospace; }
+  @media (prefers-color-scheme: dark) { .kbd-hint { color: #6b7a99; } }
+
+  /* Stage 2: Mobile responsive */
+  @media (max-width: 600px) {
+    body { padding: 1rem; }
+    .card { padding: 1.5rem; border-radius: 12px; }
+    .header { gap: 10px; margin-bottom: 1.25rem; }
+    .header h1 { font-size: 17px; }
+    .logo { width: 38px; height: 38px; }
+    .mode-tabs { gap: 6px; }
+    .mode-tab { padding: 10px 6px; }
+    .mode-tab .tab-title { font-size: 12px; }
+    .mode-tab .tab-sub { font-size: 10px; }
+    .two-drop { grid-template-columns: 1fr; }
+    .drop-zone { padding: 1.5rem 0.75rem; }
+    .drop-zone h2 { font-size: 13px; }
+    .result-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    .stat { padding: 10px 12px; }
+    .stat .value { font-size: 18px; }
+    .header h1 a { font-size: 11px !important; padding: 4px 8px !important; }
+  }
+
+  /* Stage 3: Toast notifications */
+  .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; max-width: 360px; pointer-events: none; }
+  .toast { background: #fff; border-radius: 10px; padding: 12px 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); border-left: 4px solid var(--accent); display: flex; align-items: flex-start; gap: 10px; font-size: 13px; color: #222; pointer-events: auto; animation: toastIn 0.25s cubic-bezier(.34,1.56,.64,1); }
+  .toast.success { border-left-color: #22c55e; }
+  .toast.error   { border-left-color: #ef4444; }
+  .toast.warning { border-left-color: #f5a623; }
+  .toast-icon { flex-shrink: 0; width: 18px; height: 18px; margin-top: 1px; }
+  .toast-msg { flex: 1; line-height: 1.4; word-break: break-word; }
+  .toast-close { background: none; border: none; cursor: pointer; color: #999; padding: 0 0 0 4px; font-size: 18px; line-height: 1; flex-shrink: 0; }
+  .toast-close:hover { color: #555; }
+  .toast.fade-out { animation: toastOut 0.2s ease-in forwards; }
+  @keyframes toastIn  { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes toastOut { to { opacity: 0; transform: translateX(40px); } }
+
+  /* Stage 3: Trip preview */
+  .preview-wrap { display: none; margin-top: 1rem; }
+  .preview-wrap.visible { display: block; animation: fadeSlideIn 0.25s ease-out; }
+  .preview-tabs { display: flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap; }
+  .preview-tab { padding: 6px 10px; font-size: 12px; border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; font-weight: 500; color: #555; transition: all 0.15s; }
+  .preview-tab:hover { border-color: var(--accent); }
+  .preview-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .preview-table-wrap { max-height: 360px; overflow: auto; border: 1px solid #e5e7eb; border-radius: 8px; }
+  .preview-table { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 700px; }
+  .preview-table th { background: var(--accent-bg); color: #444; text-align: left; padding: 8px; position: sticky; top: 0; font-weight: 600; border-bottom: 1px solid var(--accent-border); white-space: nowrap; }
+  .preview-table td { padding: 6px 8px; border-bottom: 1px solid #f0f0f0; color: #444; white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+  .preview-table tr:hover td { background: #fafafa; }
+  .preview-footer { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #888; margin-top: 8px; flex-wrap: wrap; gap: 8px; }
+  .preview-footer button { background: none; border: 1px solid #ddd; border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; color: #555; }
+  .preview-footer button:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-preview { width: 100%; padding: 10px; background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent-border); border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; transition: filter 0.15s; }
+  .btn-preview:hover { filter: brightness(0.96); }
+  .btn-preview svg { width: 14px; height: 14px; stroke: var(--accent); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* Stage 3: Alerts search */
+  .alert-search { width: 100%; padding: 7px 10px; border: 1px solid var(--accent-border); border-radius: 6px; font-size: 12px; margin-bottom: 10px; background: #fff; color: #333; font-family: inherit; box-sizing: border-box; }
+  .alert-search:focus { outline: none; border-color: var(--accent); }
+
+  @media (prefers-color-scheme: dark) {
+    .toast { background: #1a1d27; color: #e0e4f0; box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
+    .toast-close { color: #6b7a99; }
+    .toast-close:hover { color: #e0e4f0; }
+    .preview-tab { background: #12151f; color: #9ba3bb; border-color: #2a2f42; }
+    .preview-table-wrap { border-color: #2a2f42; }
+    .preview-table th { background: #12151f; color: #e0e4f0; border-color: #2a2f42; }
+    .preview-table td { color: #9ba3bb; border-color: #2a2f42; }
+    .preview-table tr:hover td { background: #1f2330; }
+    .preview-footer { color: #6b7a99; }
+    .preview-footer button { background: #12151f; border-color: #2a2f42; color: #9ba3bb; }
+    .alert-search { background: #12151f; border-color: #2a2f42; color: #e0e4f0; }
+  }
+
+  @media (max-width: 600px) {
+    .toast-container { top: 8px; right: 8px; left: 8px; max-width: none; }
+    .preview-table { min-width: 0; }
+  }
+
+  /* Stage 4 UI polish */
+  .card { position: relative; }
+  .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--accent); border-radius: 16px 16px 0 0; }
+
+  .result-grid .stat.primary {
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 18%, transparent), color-mix(in srgb, var(--accent) 6%, transparent));
+    border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+  .result-grid .stat.primary .label { color: var(--accent); font-weight: 600; opacity: 0.9; }
+  .result-grid .stat.primary .value { font-size: 28px; }
+
+  .breakdown-row { align-items: center; }
+  .breakdown-row .bar-track { flex: 0 0 90px; height: 4px; background: color-mix(in srgb, var(--accent) 14%, transparent); border-radius: 2px; overflow: hidden; margin: 0 12px; }
+  .breakdown-row .bar-fill { display: block; height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.5s cubic-bezier(.34,1.56,.64,1); }
+
+  .kbd-hint { display: inline-block; padding: 1px 6px; border: 1px solid currentColor; border-radius: 4px; font-size: 10px; margin-left: 8px; opacity: 0.55; font-family: 'DM Mono', ui-monospace, monospace; font-weight: 500; line-height: 1.2; vertical-align: 1px; }
+
+  .alert-title { display: flex; align-items: center; gap: 6px; }
+  .alert-title svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+
+  @media (prefers-color-scheme: dark) {
+    .result-grid .stat.primary { border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+  }
+  @media (max-width: 600px) {
+    .result-grid .stat.primary .value { font-size: 22px; }
+    .breakdown-row .bar-track { flex: 0 0 60px; margin: 0 8px; }
+  }
 </style>
 </head>
 <body>
@@ -242,7 +354,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   </div>
 
   <div class="error-box" id="errorBox"></div>
-  <button class="btn" id="processBtn" disabled onclick="processFile()">Process File</button>
+  <button class="btn" id="processBtn" disabled onclick="processFile()">Process File<span class="kbd-hint">⏎</span></button>
 
   <div class="progress-wrap" id="progressWrap">
     <div class="progress-label" id="progressLabel">Processing...</div>
@@ -251,26 +363,148 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 
   <div class="alerts" id="alerts">
     <h3>⚠️ Heads up before you download</h3>
+    <input class="alert-search" id="alertSearch" placeholder="Filter by passenger name..." oninput="filterAlerts(this.value)" />
     <div id="alertContent"></div>
   </div>
 
   <div class="results" id="results">
     <div class="result-grid" style="grid-template-columns:repeat(4,1fr)">
-      <div class="stat"><div class="label">Total trips</div><div class="value" id="statTotal">0</div></div>
+      <div class="stat primary"><div class="label">Total trips</div><div class="value" id="statTotal">0</div></div>
       <div class="stat"><div class="label">Will call created</div><div class="value" id="statWillCall">0</div></div>
       <div class="stat"><div class="label">Med Companion</div><div class="value" id="statMedComp">0</div></div>
       <div class="stat"><div class="label">Cancelled / skipped</div><div class="value" id="statCanceled" style="color:#ef4444">0</div></div>
     </div>
     <div class="breakdown" id="breakdown"></div>
-    <div class="download-group">
+    <button class="btn-preview" onclick="togglePreview()"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Preview trips before download</button>
+    <div class="preview-wrap" id="previewWrap"></div>
+    <div class="download-group" style="margin-top:10px">
       <button class="btn-download btn-dl-red" id="btn7115"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg> Download Wheelchair / Ambulatory (7115)</button>
       <button class="btn-download btn-dl-mid" id="btn7115c"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg> Download Medical Companion (7115C)</button>
       <button class="btn-download btn-dl-dark" id="btn7114"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg> Download Stretcher (7114)</button>
     </div>
-    <button class="btn-reset" onclick="fullReset()">Process another file</button>
+    <button class="btn-reset" onclick="fullReset()">Process another file<span class="kbd-hint">esc</span></button>
   </div>
 </div>
-<script>function cleanAddr(a) { return a ? String(a).replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim() : a; }
+<script>
+// Stage 2: Folder drag support
+async function getAllFilesFromDrop(items) {
+  const files = [];
+  async function traverse(entry) {
+    if (entry.isFile) {
+      await new Promise(res => entry.file(f => { files.push(f); res(); }));
+    } else if (entry.isDirectory) {
+      const reader = entry.createReader();
+      const entries = await new Promise(res => reader.readEntries(res));
+      for (const ent of entries) await traverse(ent);
+    }
+  }
+  for (const item of items) {
+    const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+    if (entry) await traverse(entry); else { const f = item.getAsFile(); if (f) files.push(f); }
+  }
+  return files;
+}
+
+function cleanAddr(a) { return a ? String(a).replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim() : a; }
+
+/* Stage 3: Toast notifications */
+const TOAST_SVG = {
+ success: '<svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
+ error:   '<svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>',
+ warning: '<svg viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+ info:    '<svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+};
+function _toastContainer() {
+ let c = document.getElementById('toastContainer');
+ if (!c) { c = document.createElement('div'); c.id = 'toastContainer'; c.className = 'toast-container'; document.body.appendChild(c); }
+ return c;
+}
+function toast(msg, type, timeoutMs) {
+ type = type || 'info';
+ const c = _toastContainer();
+ const t = document.createElement('div');
+ t.className = 'toast ' + type;
+ const icon = document.createElement('span'); icon.className = 'toast-icon'; icon.innerHTML = TOAST_SVG[type] || TOAST_SVG.info;
+ const m = document.createElement('span'); m.className = 'toast-msg'; m.textContent = msg;
+ const btn = document.createElement('button'); btn.className = 'toast-close'; btn.setAttribute('aria-label','Close'); btn.textContent = '×';
+ const close = () => { t.classList.add('fade-out'); setTimeout(() => t.remove(), 200); };
+ btn.onclick = close;
+ t.appendChild(icon); t.appendChild(m); t.appendChild(btn);
+ c.appendChild(t);
+ const dt = timeoutMs != null ? timeoutMs : (type === 'error' ? 6000 : type === 'warning' ? 5000 : 3500);
+ if (dt > 0) setTimeout(close, dt);
+ return t;
+}
+
+/* Stage 3: Trip preview */
+const PREVIEW_COLS = ['Trip ID','Passenger','Mobility','Pickup Address','Dropoff Address','Earliest Departure Time','Appointment Time'];
+const _previewState = { sheets: [], active: 0, limit: 50 };
+function _esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]); }
+function setPreviewSheets(sheets) { _previewState.sheets = sheets || []; _previewState.active = 0; _previewState.limit = 50; const wrap = document.getElementById('previewWrap'); if (wrap) wrap.classList.remove('visible'); }
+function renderPreview() {
+ const wrap = document.getElementById('previewWrap');
+ if (!wrap) return;
+ const { sheets, active, limit } = _previewState;
+ if (!sheets.length) { wrap.classList.remove('visible'); return; }
+ const sheet = sheets[active];
+ if (!sheet) return;
+ const colIdx = PREVIEW_COLS.map(c => OUT_COLS.indexOf(c));
+ const shown = sheet.rows.slice(0, limit);
+ const tabsHtml = sheets.length > 1
+  ? '<div class="preview-tabs">' + sheets.map((s, i) =>
+     '<button class="preview-tab' + (i === active ? ' active' : '') + '" onclick="setPreviewTab(' + i + ')">' + _esc(s.label) + ' (' + s.rows.length + ')</button>'
+    ).join('') + '</div>'
+  : '';
+ const rowsHtml = shown.length
+  ? shown.map(r => '<tr>' + colIdx.map(i => {
+     const v = i >= 0 && r ? (r[i] == null ? '' : r[i]) : '';
+     return '<td title="' + _esc(v) + '">' + _esc(v) + '</td>';
+    }).join('') + '</tr>').join('')
+  : '<tr><td colspan="' + PREVIEW_COLS.length + '" style="text-align:center;padding:24px;color:#888">No rows</td></tr>';
+ const headHtml = '<tr>' + PREVIEW_COLS.map(c => '<th>' + c + '</th>').join('') + '</tr>';
+ const more = sheet.rows.length > shown.length;
+ const footerHtml = '<div class="preview-footer"><span>Showing ' + shown.length + ' of ' + sheet.rows.length + ' rows</span>' +
+  (more ? '<button onclick="showAllPreview()">Show all</button>' : (sheet.rows.length > 50 ? '<button onclick="collapsePreview()">Collapse</button>' : '')) + '</div>';
+ wrap.innerHTML = tabsHtml + '<div class="preview-table-wrap"><table class="preview-table"><thead>' + headHtml + '</thead><tbody>' + rowsHtml + '</tbody></table></div>' + footerHtml;
+}
+function setPreviewTab(i) { _previewState.active = i; _previewState.limit = 50; renderPreview(); }
+function showAllPreview() { _previewState.limit = Infinity; renderPreview(); }
+function collapsePreview() { _previewState.limit = 50; renderPreview(); }
+function togglePreview() {
+ const wrap = document.getElementById('previewWrap');
+ if (!wrap) return;
+ if (wrap.classList.contains('visible')) wrap.classList.remove('visible');
+ else { renderPreview(); wrap.classList.add('visible'); }
+}
+
+/* Stage 4: Out-of-state detection */
+function isOutOfState(addr) {
+ if (!addr) return null;
+ const s = String(addr);
+ const stMatch = s.match(/,\s*([A-Z]{2})\b[^,]*?\b\d{5}\b/);
+ if (stMatch) return stMatch[1] !== 'CA' ? stMatch[1] : null;
+ const zipMatch = s.match(/\b(\d{5})\b/);
+ if (zipMatch) {
+  const z = parseInt(zipMatch[1]);
+  if (z >= 90000 && z <= 96199) return null;
+  return 'non-CA';
+ }
+ return null;
+}
+
+/* Stage 3: Alerts search */
+function filterAlerts(q) {
+ const lower = String(q || '').toLowerCase().trim();
+ document.querySelectorAll('#alertContent .alert-section').forEach(section => {
+  let visible = 0;
+  section.querySelectorAll('.alert-item').forEach(item => {
+   const show = !lower || item.textContent.toLowerCase().includes(lower);
+   item.style.display = show ? '' : 'none';
+   if (show) visible++;
+  });
+  section.style.display = visible === 0 ? 'none' : '';
+ });
+}
 if (typeof XLSX === 'undefined') {
  var s = document.createElement('script');
  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
@@ -333,7 +567,7 @@ wireDrop('dropOld','inputOld','old');
 wireDrop('dropNew','inputNew','new');
 
 function readFile(file, key) {
-  if (!file.name.match(/\.xlsx?$/i)) { showError('Please upload an .xlsx file.'); return; }
+  if (!file.name.match(/\.xlsx?$/i)) { showError('Please upload an .xlsx file.'); toast('Please upload an .xlsx file.', 'error'); return; }
   hideError();
   const reader = new FileReader();
   reader.onload = e => {
@@ -345,8 +579,9 @@ function readFile(file, key) {
       if (key === 'single') { dataSingle = sheets; document.getElementById('nameSingle').textContent = file.name; document.getElementById('pillSingle').style.display = 'flex'; }
       if (key === 'old')    { dataOld    = sheets; document.getElementById('nameOld').textContent    = file.name; document.getElementById('pillOld').style.display = 'flex'; }
       if (key === 'new')    { dataNew    = sheets; document.getElementById('nameNew').textContent    = file.name; document.getElementById('pillNew').style.display = 'flex'; }
+      toast('Loaded ' + file.name, 'success');
       checkReady();
-    } catch(err) { showError('Could not read file: ' + err.message); }
+    } catch(err) { showError('Could not read file: ' + err.message); toast('Could not read ' + file.name, 'error'); }
   };
   reader.readAsArrayBuffer(file);
 }
@@ -363,6 +598,8 @@ function fullReset() {
   document.getElementById('results').classList.remove('visible');
   document.getElementById('alerts').classList.remove('visible');
   document.getElementById('progressWrap').classList.remove('visible');
+  const pw = document.getElementById('previewWrap'); if (pw) pw.classList.remove('visible');
+  const as = document.getElementById('alertSearch'); if (as) as.value = '';
   hideError();
 }
 
@@ -550,7 +787,7 @@ function _doProcess() {
 
     const rows7114 = [], rows7115 = [], rows7115c = [];
     const stats = { total: 0, willCall: 0, stretcher: 0, medComp: 0, wheelchair: 0 };
-    const alerts = { bariatric: [], waitReturn: [] };
+    const alerts = { bariatric: [], waitReturn: [], outOfState: [] };
  let canceledCount = 0;
     let fileDate = null;
 
@@ -600,6 +837,14 @@ function _doProcess() {
       const tripType  = idx['Trip Type']  !== undefined ? r[idx['Trip Type']]  : '';
       if (isBariatric(notes)) alerts.bariatric.push(`${passenger} (${tripType})`);
       if (tripType === 'Return' && isWaitReturn(notes)) alerts.waitReturn.push(`${passenger} (${tripType})`);
+      const puAddrChk = idx['Pickup Address'] !== undefined ? r[idx['Pickup Address']] : null;
+      const doAddrChk = idx['Dropoff Address'] !== undefined ? r[idx['Dropoff Address']] : null;
+      const puSt = isOutOfState(puAddrChk);
+      const doSt = isOutOfState(doAddrChk);
+      if (puSt || doSt) {
+        const dir = puSt && doSt ? `pickup ${puSt}, dropoff ${doSt}` : puSt ? `pickup ${puSt}` : `dropoff ${doSt}`;
+        alerts.outOfState.push(`${passenger} (${tripType}) — ${dir}`);
+      }
 
       // Normalize mobility
       const mobility = getMobility(rawMob);
@@ -629,19 +874,38 @@ function _doProcess() {
     blob7114  = makeBlob(rows7114);
     blob7115  = makeBlob(rows7115);
     blob7115c = makeBlob(rows7115c);
+    const previewSheets = [];
+    if (rows7115.length)  previewSheets.push({ label: 'Wheelchair (7115)', rows: rows7115 });
+    if (rows7115c.length) previewSheets.push({ label: 'Med Companion (7115C)', rows: rows7115c });
+    if (rows7114.length)  previewSheets.push({ label: 'Stretcher (7114)', rows: rows7114 });
+    setPreviewSheets(previewSheets);
+    document.getElementById('btn7115').style.display  = rows7115.length  ? '' : 'none';
+    document.getElementById('btn7115c').style.display = rows7115c.length ? '' : 'none';
+    document.getElementById('btn7114').style.display  = rows7114.length  ? '' : 'none';
+    const pvBtn = document.querySelector('.btn-preview'); if (pvBtn) pvBtn.style.display = previewSheets.length ? '' : 'none';
 
     setProgress(100, 'Done!');
+    toast('Processed ' + stats.total + ' trip' + (stats.total === 1 ? '' : 's'), 'success');
+    if (document.getElementById('alertSearch')) document.getElementById('alertSearch').value = '';
 
     // Show alerts if any
-    if (alerts.bariatric.length > 0 || alerts.waitReturn.length > 0) {
+    if (alerts.bariatric.length > 0 || alerts.waitReturn.length > 0 || alerts.outOfState.length > 0) {
+      const ICON_WARN = '<svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+      const ICON_CLOCK = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+      const ICON_MAP = '<svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>';
       let alertHtml = '';
+      if (alerts.outOfState.length > 0) {
+        alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_MAP}Out-of-state trips (${alerts.outOfState.length})</div>`;
+        alerts.outOfState.forEach(n => { alertHtml += `<div class="alert-item">${n}</div>`; });
+        alertHtml += '</div>';
+      }
       if (alerts.bariatric.length > 0) {
-        alertHtml += `<div class="alert-section"><div class="alert-title">⚠️ Bariatric / Heavy Veterans (${alerts.bariatric.length})</div>`;
+        alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_WARN}Bariatric / Heavy Veterans (${alerts.bariatric.length})</div>`;
         alerts.bariatric.forEach(n => { alertHtml += `<div class="alert-item">${n}</div>`; });
         alertHtml += '</div>';
       }
       if (alerts.waitReturn.length > 0) {
-        alertHtml += `<div class="alert-section"><div class="alert-title">⏳ Wait &amp; Return (${alerts.waitReturn.length})</div>`;
+        alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_CLOCK}Wait &amp; Return (${alerts.waitReturn.length})</div>`;
         alerts.waitReturn.forEach(n => { alertHtml += `<div class="alert-item">${n}</div>`; });
         alertHtml += '</div>';
       }
@@ -654,11 +918,16 @@ function _doProcess() {
     document.getElementById('statWillCall').textContent = stats.willCall;
     document.getElementById('statMedComp').textContent  = stats.medComp;
 
+    const _bar = (count, total) => {
+      const pct = total > 0 ? Math.max(2, Math.round((count / total) * 100)) : 0;
+      return `<span class="bar-track"><span class="bar-fill" style="width:${count > 0 ? pct : 0}%"></span></span>`;
+    };
     document.getElementById('breakdown').innerHTML = `<h3>Breakdown</h3>
-      <div class="breakdown-row"><span class="desc">Will call trips created</span><span class="count">${stats.willCall}</span></div>
-      <div class="breakdown-row"><span class="desc">Wheelchair / Ambulatory (7115)</span><span class="count">${stats.wheelchair}</span></div>
-      <div class="breakdown-row"><span class="desc">Medical Companion (7115C)</span><span class="count">${stats.medComp}</span></div>
-      <div class="breakdown-row"><span class="desc">Stretcher (7114)</span><span class="count">${stats.stretcher}</span></div><div class="breakdown-row"><span class="desc">Cancelled / N/A (skipped)</span><span class="count">${canceledCount}</span></div>`;
+      <div class="breakdown-row"><span class="desc">Will call trips created</span>${_bar(stats.willCall, stats.total)}<span class="count">${stats.willCall}</span></div>
+      <div class="breakdown-row"><span class="desc">Wheelchair / Ambulatory (7115)</span>${_bar(stats.wheelchair, stats.total)}<span class="count">${stats.wheelchair}</span></div>
+      <div class="breakdown-row"><span class="desc">Medical Companion (7115C)</span>${_bar(stats.medComp, stats.total)}<span class="count">${stats.medComp}</span></div>
+      <div class="breakdown-row"><span class="desc">Stretcher (7114)</span>${_bar(stats.stretcher, stats.total)}<span class="count">${stats.stretcher}</span></div>
+      <div class="breakdown-row"><span class="desc">Cancelled / N/A (skipped)</span><span class="count">${canceledCount}</span></div>`;
 
     document.getElementById('btn7115').onclick  = () => triggerDownload(blob7115,  `SDVA_${dateFmt}_7115.xlsx`);
     document.getElementById('btn7115c').onclick = () => triggerDownload(blob7115c, `SDVA_${dateFmt}_7115C.xlsx`);
@@ -669,10 +938,22 @@ function _doProcess() {
 
   } catch(err) {
     showError('Error: ' + err.message);
+    toast(err.message, 'error');
     document.getElementById('progressWrap').classList.remove('visible');
     document.getElementById('processBtn').disabled = false;
   }
 }
+
+
+// Stage 2: Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'Escape') { if (typeof fullReset === 'function') fullReset(); }
+  if (e.key === 'Enter' && !e.shiftKey) {
+    const btn = document.getElementById('processBtn');
+    if (btn && !btn.disabled) { e.preventDefault(); btn.click(); }
+  }
+});
 </script>
 </body>
 </html>
