@@ -537,25 +537,29 @@ const KEEP_DATA_COLS = new Set([
  'Appointment Time','Pickup Address','Dropoff Address','VA Notes'
 ]);
 const VETERAN_OVERRIDES = [
- { name: ['allen', 'merrell'],     days: [1,3,5], pickup: '11:15', return_: '16:00' },
- { name: ['fabio', 'villareal'],   days: [1,3,5], pickup: '06:00', return_: '11:30' },
- { name: ['ramon', 'paredes'],     days: [1,3,5], pickup: '09:00', return_: null    },
- { name: ['nonilon', 'penalba'],   days: [2,4,6], pickup: '05:00', return_: null    },
- { name: ['vincent', 'donini'],    days: [2,4,6], pickup: '06:30', return_: null    },
- { name: ['joe', 'morris'],        days: [2,4,6], pickup: '08:15', return_: null    },
+ { name: ['allen', 'merrell'],      days: [1,3,5], pickup: '11:15', return_: '16:00' },
+ { name: ['fabio', 'villareal'],    days: [1,3,5], pickup: '06:00', return_: '11:30' },
+ { name: ['ramon', 'paredes'],      days: [1,3,5], pickup: '09:00', return_: null    },
+ { name: ['nonilon', 'penalba'],    days: [2,4,6], pickup: '05:00', return_: null    },
+ { name: ['vincent', 'donini'],     days: [2,4,6], pickup: '06:30', return_: null    },
+ { name: ['darryl', 'linder'],      days: [2,4,6], pickup: '07:00', return_: '12:45' },
+ { name: ['joe', 'morris'],         days: [2,4,6], pickup: '08:15', return_: null    },
+ { name: ['kevin', 'curry'],        days: [2,4,6], pickup: '09:00', return_: '14:15' },
+ { name: ['charles', 'woodland'],   days: [2,4,6], pickup: '11:15', return_: '16:00' },
 ];
 
-const DIALYSIS_EXCLUDES = [
- ['darryl', 'linder'],
- ['kevin', 'curry'],
- ['charles', 'woodland'],
-];
+const DIALYSIS_EXCLUDES = [];
 
-function findVeteranOverride(passenger, dayOfWeek, notes) {
+// Broader dialysis detection — checks notes AND dropoff address for common chain names
+function isDialysisTrip(notes, doAddr) {
+ const combined = (String(notes || '') + ' ' + String(doAddr || '')).toLowerCase();
+ return /dialysis|hemodialysis|davita|fresenius|usrc|satellite\s+healthcare|renal\s+care/.test(combined);
+}
+
+function findVeteranOverride(passenger, dayOfWeek, notes, doAddr) {
  if (!passenger) return null;
  const p = String(passenger).toLowerCase();
- const isDialysis = notes && /dialysis/i.test(String(notes));
- if (!isDialysis) return null;
+ if (!isDialysisTrip(notes, doAddr)) return null;
  for (const v of VETERAN_OVERRIDES) {
   if (v.name.every(part => p.includes(part)) && v.days.includes(dayOfWeek)) return v;
  }
@@ -892,7 +896,7 @@ async function processFile() {
  const passenger = cleanName(_rawPassenger);
  if (idx['Passenger'] !== undefined && _rawPassenger) r[idx['Passenger']] = passenger;
  const dow = getDayOfWeekFromCell(apptVal);
- const override = findVeteranOverride(passenger, dow, notes);
+ const override = findVeteranOverride(passenger, dow, notes, doAddr);
  if (override && override.return_) {
  if (earliestI !== undefined) r[earliestI] = applyOverrideTime(apptVal, override.return_);
  if (apptI !== undefined) r[apptI] = null;
@@ -921,7 +925,8 @@ async function processFile() {
    if (timeMatch && tzMatch && dayMatch) {
     const passengerInc = idx['Passenger'] !== undefined ? r[idx['Passenger']] : null;
     const dowInc = getDayOfWeekFromCell(apptVal);
-    const overrideInc = findVeteranOverride(passengerInc, dowInc, notes);
+    const doAddrInc = idx['Dropoff Address'] !== undefined ? r[idx['Dropoff Address']] : null;
+    const overrideInc = findVeteranOverride(passengerInc, dowInc, notes, doAddrInc);
     const apptTimeOnly = timeMatch[1].padStart(2, '0') + ':' + timeMatch[2];
     const prefPU = extractPrefPickup(notes);
     if (overrideInc) {
@@ -947,7 +952,7 @@ async function processFile() {
     const distI = idx['Estimated Distance (miles)'];
     const distVal = distI !== undefined ? parseFloat(r[distI]) : NaN;
     const isLBVA = doAddr && String(doAddr).includes('5901');
-    const isDialysisAppt = notes && /dialysis/i.test(String(notes));
+    const isDialysisAppt = isDialysisTrip(notes, doAddr);
     let offset;
     if (isDialysisAppt && !isLBVA && !isNaN(distVal) && distVal < 10) {
      offset = 60; // dialysis, not VA, < 10 mi
