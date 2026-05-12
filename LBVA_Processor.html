@@ -707,6 +707,7 @@ function to24h(str) {
  if (hm) { const h=parseInt(hm[1]),m=parseInt(hm[2]); if(h<=23&&m<=59) return {h,m}; }
  return null;
 }
+// Used for RETURN trips only — extracts post-appointment / return-pickup times
 function extractTimeFromNotes(notes) {
  if (!notes) return null;
  const text = String(notes);
@@ -716,8 +717,6 @@ function extractTimeFromNotes(notes) {
  if (!/[AP]M|:/i.test(m[1]+m[2])) continue;
  const t = to24h(m[2]); if (t && t.h<=23) return t;
  }
- const pp = text.match(/preferred\s+pick\s*up\s+(?:time\s+)?(?:at\s+)?(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i);
- if (pp) { const t=to24h(pp[1]); if(t) return t; }
  const ret = text.match(/return\s+(?:pick\s*up\s+(?:from\s+\w+\s+)?at\s+|(?:home\s+)?(?:at\s+)?)(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i);
  if (ret) { const t=to24h(ret[1]); if(t) return t; }
  const vr = text.match(/(?:request(?:ing)?\s+to\s+be\s+pick(?:ed)?\s+up|veteran\s+request(?:ing)?(?:\s+to\s+be)?\s+pick(?:ed)?\s+up)\s+(?:at\s+)?(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i);
@@ -726,11 +725,12 @@ function extractTimeFromNotes(notes) {
  if (ct) { const t=to24h(ct[1]); if(t) return t; }
  return null;
 }
+// Used for INCOMING trips — extracts staff-specified pickup-from-home time
 function extractPrefPickup(notes) {
  if (!notes) return null;
  const text = String(notes);
- const pp = text.match(/preferred\s+pick\s*up\s+(?:time\s+)?(?:at\s+)?(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i);
- if (pp) { const t = to24h(pp[1]); if (t) return t; }
+ const m = text.match(/(?:preferred|specific|requested)\s+pick\s*up(?:\s+time)?\s*(?:at|:|-)?\s*(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i);
+ if (m) { const t = to24h(m[1]); if (t) return t; }
  return null;
 }
 function isVALongBeachDropoff(notes, doAddr) {
@@ -846,7 +846,7 @@ async function processFile() {
  }
  setProgress(45, 'Processing trips...');
  const stats = { total: 0, extracted: 0, vaLB: 0, copied: 0, stretcher: 0, wheelchair: 0 };
- const alerts = { bariatric: [], waitReturn: [], excluded: [], outOfState: [] };
+ const alerts = { bariatric: [], waitReturn: [], excluded: [], outOfState: [], longDistance: [] };
  let excludedCount = 0;
  let canceledCount = 0;
  let fileDate = null;
@@ -923,6 +923,7 @@ async function processFile() {
     const dowInc = getDayOfWeekFromCell(apptVal);
     const overrideInc = findVeteranOverride(passengerInc, dowInc, notes);
     const apptTimeOnly = timeMatch[1].padStart(2, '0') + ':' + timeMatch[2];
+    const prefPU = extractPrefPickup(notes);
     if (overrideInc) {
      r[earliestI] = applyOverrideTime(apptVal, overrideInc.pickup);
      if (notesI !== undefined) {
@@ -930,18 +931,36 @@ async function processFile() {
       r[notesI] = existing ? existing + ' | Appt: ' + apptTimeOnly : 'Appt: ' + apptTimeOnly;
      }
      r[apptI] = null;
+    } else if (prefPU) {
+     const newVal = formatTimeIntoCell(apptVal, prefPU);
+     if (newVal) {
+      r[earliestI] = newVal;
+      if (notesI !== undefined) {
+       const existing = r[notesI] ? String(r[notesI]).trim() : '';
+       r[notesI] = existing ? existing + ' | Appt: ' + apptTimeOnly : 'Appt: ' + apptTimeOnly;
+      }
+      r[apptI] = null;
+     }
     } else {
     let totalMins = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]);
     const doAddr = idx['Dropoff Address'] !== undefined ? r[idx['Dropoff Address']] : null;
     const distI = idx['Estimated Distance (miles)'];
     const distVal = distI !== undefined ? parseFloat(r[distI]) : NaN;
     const isLBVA = doAddr && String(doAddr).includes('5901');
+    const isDialysisAppt = notes && /dialysis/i.test(String(notes));
     let offset;
-    if (!isNaN(distVal) && distVal > 50) offset = 240;
-    else if (!isNaN(distVal) && distVal > 30) offset = 180;
-    else if (!isNaN(distVal) && distVal < 5.3 && !isLBVA) offset = 60;
-    else if (isLBVA) offset = 120;
-    else offset = 90;
+    if (isDialysisAppt && !isLBVA && !isNaN(distVal) && distVal < 10) {
+     offset = 60; // dialysis, not VA, < 10 mi
+    } else if (!isNaN(distVal)) {
+     if (distVal > 100) {
+      offset = 240;
+      alerts.longDistance.push(`${cleanName(passengerInc) || passengerInc} (${tripType}) — ${distVal.toFixed(1)} mi`);
+     } else if (distVal > 70) offset = 240;
+     else if (distVal > 45) offset = 180;
+     else offset = 120;
+    } else {
+     offset = 120; // unknown distance fallback
+    }
     totalMins -= offset;
     if (totalMins < 0) totalMins += 1440;
     const hh = String(Math.floor(totalMins / 60)).padStart(2, '0');
@@ -984,12 +1003,19 @@ async function processFile() {
  setProgress(100, 'Done!');
  toast('Processed ' + stats.total + ' trip' + (stats.total === 1 ? '' : 's'), 'success');
  if (document.getElementById('alertSearch')) document.getElementById('alertSearch').value = '';
- if (alerts.bariatric.length > 0 || alerts.waitReturn.length > 0 || alerts.excluded.length > 0 || alerts.outOfState.length > 0) {
+ if (alerts.bariatric.length > 0 || alerts.waitReturn.length > 0 || alerts.excluded.length > 0 || alerts.outOfState.length > 0 || alerts.longDistance.length > 0) {
   const ICON_WARN = '<svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
   const ICON_CLOCK = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
   const ICON_BAN = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>';
   const ICON_MAP = '<svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>';
+  const ICON_DIST = '<svg viewBox="0 0 24 24"><line x1="2" y1="12" x2="20" y2="12"/><polyline points="16 8 20 12 16 16"/><circle cx="3" cy="12" r="1.5"/></svg>';
   let alertHtml = '';
+  if (alerts.longDistance.length > 0) {
+   alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_DIST}Long-distance trips &gt;100 mi (${alerts.longDistance.length})</div>`;
+   alerts.longDistance.forEach(n => { alertHtml += `<div class="alert-item">${n}</div>`; });
+   alertHtml += '</div>';
+   toast(alerts.longDistance.length + ' trip' + (alerts.longDistance.length === 1 ? '' : 's') + ' over 100 mi — see alerts panel', 'warning', 7000);
+  }
   if (alerts.outOfState.length > 0) {
    alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_MAP}Out-of-state trips (${alerts.outOfState.length})</div>`;
    alerts.outOfState.forEach(n => { alertHtml += `<div class="alert-item">${n}</div>`; });
