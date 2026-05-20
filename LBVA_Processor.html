@@ -701,6 +701,71 @@ function getFingerprints(sheets) {
  }
  return prints;
 }
+
+/* Two-stage diff: stable key matches trips, content hash detects edits */
+const DIFF_FIELDS = [
+ { col: 'Appointment Time', label: 'Appt' },
+ { col: 'Earliest Departure Time', label: 'EDT' },
+ { col: 'Pickup Address', label: 'Pickup' },
+ { col: 'Dropoff Address', label: 'Dropoff' },
+ { col: 'VA Notes', label: 'Notes' },
+ { col: 'Mobility', label: 'Mobility' },
+ { col: 'Estimated Distance (miles)', label: 'Distance' },
+ { col: 'Status', label: 'Status' },
+ { col: 'Phone Number', label: 'Phone' }
+];
+function getContentHash(row, idx) {
+ return DIFF_FIELDS.map(f => {
+  const i = idx[f.col];
+  return String(i !== undefined && row[i] != null ? row[i] : '').trim();
+ }).join('||');
+}
+function describeChanges(oldRow, newRow, idx) {
+ const changed = [];
+ for (const f of DIFF_FIELDS) {
+  const i = idx[f.col];
+  if (i === undefined) continue;
+  const o = String(oldRow[i] == null ? '' : oldRow[i]).trim();
+  const n = String(newRow[i] == null ? '' : newRow[i]).trim();
+  if (o !== n) changed.push(f.label);
+ }
+ return changed;
+}
+function indexByStableKey(sheets) {
+ const { headerRow, allRows } = getAllRows(sheets);
+ if (!headerRow) return { byKey: new Map(), idx: {} };
+ const idx = {};
+ headerRow.forEach((h, i) => { if (h) idx[h] = i; });
+ const byKey = new Map();
+ for (const row of allRows) {
+  if (!row || row.every(v => v === null)) continue;
+  const key = getFingerprint(row, idx);
+  if (!key) continue;
+  byKey.set(key, { row, content: getContentHash(row, idx) });
+ }
+ return { byKey, idx };
+}
+function diffSheets(oldSheets, newSheets) {
+ const oldD = indexByStableKey(oldSheets);
+ const newD = indexByStableKey(newSheets);
+ const newKeys = new Set();
+ const modifiedKeys = new Set();
+ const removed = [];
+ const changeMap = new Map();
+ for (const [key, { row, content }] of newD.byKey) {
+  const oldEntry = oldD.byKey.get(key);
+  if (!oldEntry) newKeys.add(key);
+  else if (oldEntry.content !== content) {
+   modifiedKeys.add(key);
+   changeMap.set(key, describeChanges(oldEntry.row, row, newD.idx));
+  }
+ }
+ for (const [key, entry] of oldD.byKey) {
+  if (!newD.byKey.has(key)) removed.push({ key, row: entry.row, idx: oldD.idx });
+ }
+ return { newKeys, modifiedKeys, removed, changeMap };
+}
+
 function to24h(str) {
  if (!str) return null;
  str = String(str).trim().toUpperCase().replace(/\s+/g,'');
@@ -807,15 +872,15 @@ async function processFile() {
  setProgress(10, 'Reading data...');
  await new Promise(r => setTimeout(r, 50));
  try {
- let sourceSheets, filterIds = null;
+ let sourceSheets, filterIds = null, diffResult = null;
  if (mode === 'compare') {
- const oldPrints = getFingerprints(dataOld);
- const newPrints = getFingerprints(dataNew);
- const addedPrints = new Set([...newPrints].filter(fp => !oldPrints.has(fp)));
- if (addedPrints.size === 0) throw new Error('No new trips found between the two files. Are you sure the newer file has more trips?');
- filterIds = addedPrints;
+ diffResult = diffSheets(dataOld, dataNew);
+ if (diffResult.newKeys.size === 0 && diffResult.modifiedKeys.size === 0) {
+  throw new Error('No new or modified trips found between the two files.');
+ }
+ filterIds = new Set([...diffResult.newKeys, ...diffResult.modifiedKeys]);
  sourceSheets = dataNew;
- setProgress(25, `Found ${addedPrints.size} new trips...`);
+ setProgress(25, `Found ${diffResult.newKeys.size} new, ${diffResult.modifiedKeys.size} modified, ${diffResult.removed.length} removed...`);
  } else {
  sourceSheets = dataSingle;
  }
@@ -849,17 +914,27 @@ async function processFile() {
   excludeDialysis = await askDialysisPrompt(dialysisCandidates);
  }
  setProgress(45, 'Processing trips...');
- const stats = { total: 0, extracted: 0, vaLB: 0, copied: 0, stretcher: 0, wheelchair: 0 };
- const alerts = { bariatric: [], waitReturn: [], excluded: [], outOfState: [], longDistance: [] };
+ const stats = { total: 0, extracted: 0, vaLB: 0, copied: 0, stretcher: 0, wheelchair: 0, modified: 0 };
+ const alerts = { bariatric: [], waitReturn: [], excluded: [], outOfState: [], longDistance: [], modified: [], removed: [] };
+ // Populate removed-trip alerts from diff (trips in old file no longer in new)
+ if (diffResult) {
+  for (const { row: oldRow, idx: oldIdx } of diffResult.removed) {
+   const p = oldIdx['Passenger'] !== undefined ? oldRow[oldIdx['Passenger']] : 'Unknown';
+   const t = oldIdx['Trip Type'] !== undefined ? oldRow[oldIdx['Trip Type']] : '';
+   const m = oldIdx['Mobility'] !== undefined ? oldRow[oldIdx['Mobility']] : '';
+   alerts.removed.push(`${cleanName(p) || p} (${t}, ${m || 'unknown'})`);
+  }
+ }
  let excludedCount = 0;
  let canceledCount = 0;
  let fileDate = null;
  const stretcherRows = [], wheelchairRows = [];
  for (const row of allRows) {
  if (!row || row.every(v => v === null)) continue;
+ let rowKey = null;
  if (filterIds) {
- const fp = getFingerprint(row, idx);
- if (!fp || !filterIds.has(fp)) continue;
+ rowKey = getFingerprint(row, idx);
+ if (!rowKey || !filterIds.has(rowKey)) continue;
  }
  const r = [...row];
  while (r.length < headerRow.length) r.push(null);
@@ -867,6 +942,7 @@ async function processFile() {
  const notes = notesI !== undefined ? r[notesI] : null;
  const apptVal = apptI !== undefined ? r[apptI] : null;
  const mobility = mobilityI !== undefined ? r[mobilityI] : null;
+ const mobStr = mobility ? String(mobility).trim() : 'unknown';
  if (!fileDate && apptVal) fileDate = getDateFromAppt(apptVal);
  const status = statusI !== undefined ? r[statusI] : null;
  if (status && String(status).toLowerCase() === 'canceled') { canceledCount++; continue; }
@@ -875,20 +951,33 @@ async function processFile() {
  const passenger = idx['Passenger'] !== undefined ? r[idx['Passenger']] : 'Unknown';
  const tripDow = getDayOfWeekFromCell(apptVal);
  if (excludeDialysis && isDialysisExcluded(passenger, tripDow, notes)) {
-  alerts.excluded.push(passenger + ' (' + tripType + ')');
+  alerts.excluded.push(`${passenger} (${tripType}, ${mobStr})`);
   stats.total--;
   excludedCount++;
   continue;
  }
- if (isBariatric(notes)) alerts.bariatric.push(`${passenger} (${tripType})`);
- if (tripType === 'Return' && isWaitReturn(notes)) alerts.waitReturn.push(`${passenger} (${tripType})`);
+ // Modified-trip alert (only in compare mode)
+ if (diffResult && rowKey && diffResult.modifiedKeys.has(rowKey)) {
+  const changes = diffResult.changeMap.get(rowKey) || [];
+  alerts.modified.push(`${cleanName(passenger) || passenger} (${tripType}, ${mobStr}) — changed: ${changes.join(', ') || 'fields'}`);
+  stats.modified++;
+ }
+ // Long-distance check applies to BOTH directions (Return can be a discharge)
+ const distICheck = idx['Estimated Distance (miles)'];
+ const distValCheck = distICheck !== undefined ? parseFloat(r[distICheck]) : NaN;
+ if (!isNaN(distValCheck) && distValCheck > 100) {
+  const tag = tripType === 'Return' ? `${tripType}, ${mobStr} — possible discharge` : `${tripType}, ${mobStr}`;
+  alerts.longDistance.push(`${cleanName(passenger) || passenger} (${tag}) — ${distValCheck.toFixed(1)} mi`);
+ }
+ if (isBariatric(notes)) alerts.bariatric.push(`${passenger} (${tripType}, ${mobStr})`);
+ if (tripType === 'Return' && isWaitReturn(notes)) alerts.waitReturn.push(`${passenger} (${tripType}, ${mobStr})`);
  const puAddrCheck = idx['Pickup Address'] !== undefined ? r[idx['Pickup Address']] : null;
  const doAddrCheck = idx['Dropoff Address'] !== undefined ? r[idx['Dropoff Address']] : null;
  const puState = isOutOfState(puAddrCheck);
  const doState = isOutOfState(doAddrCheck);
  if (puState || doState) {
   const dir = puState && doState ? `pickup ${puState}, dropoff ${doState}` : puState ? `pickup ${puState}` : `dropoff ${doState}`;
-  alerts.outOfState.push(`${cleanName(passenger)} (${tripType}) — ${dir}`);
+  alerts.outOfState.push(`${cleanName(passenger)} (${tripType}, ${mobStr}) — ${dir}`);
  }
  const doAddr = idx['Dropoff Address'] !== undefined ? r[idx['Dropoff Address']] : null;
  if (tripType === 'Return') {
@@ -956,10 +1045,8 @@ async function processFile() {
     if (!isLBVA && !isNaN(distVal) && distVal < 10) {
      offset = 60; // any non-VA trip < 10 mi
     } else if (!isNaN(distVal)) {
-     if (distVal > 100) {
-      offset = 240;
-      alerts.longDistance.push(`${cleanName(passengerInc) || passengerInc} (${tripType}) — ${distVal.toFixed(1)} mi`);
-     } else if (distVal > 70) offset = 240;
+     if (distVal > 100) offset = 240;       // long-distance alert already emitted in main loop
+     else if (distVal > 70) offset = 240;
      else if (distVal > 45) offset = 180;
      else offset = 120;
     } else {
@@ -1007,13 +1094,26 @@ async function processFile() {
  setProgress(100, 'Done!');
  toast('Processed ' + stats.total + ' trip' + (stats.total === 1 ? '' : 's'), 'success');
  if (document.getElementById('alertSearch')) document.getElementById('alertSearch').value = '';
- if (alerts.bariatric.length > 0 || alerts.waitReturn.length > 0 || alerts.excluded.length > 0 || alerts.outOfState.length > 0 || alerts.longDistance.length > 0) {
+ if (alerts.bariatric.length > 0 || alerts.waitReturn.length > 0 || alerts.excluded.length > 0 || alerts.outOfState.length > 0 || alerts.longDistance.length > 0 || alerts.modified.length > 0 || alerts.removed.length > 0) {
   const ICON_WARN = '<svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
   const ICON_CLOCK = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
   const ICON_BAN = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>';
   const ICON_MAP = '<svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>';
   const ICON_DIST = '<svg viewBox="0 0 24 24"><line x1="2" y1="12" x2="20" y2="12"/><polyline points="16 8 20 12 16 16"/><circle cx="3" cy="12" r="1.5"/></svg>';
+  const ICON_EDIT = '<svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+  const ICON_TRASH = '<svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
   let alertHtml = '';
+  if (alerts.modified.length > 0) {
+   alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_EDIT}Modified trips — re-upload (${alerts.modified.length})</div>`;
+   alerts.modified.forEach(n => { alertHtml += `<div class="alert-item">${n}</div>`; });
+   alertHtml += '</div>';
+  }
+  if (alerts.removed.length > 0) {
+   alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_TRASH}Removed from new file — cancel in RouteGenie (${alerts.removed.length})</div>`;
+   alerts.removed.forEach(n => { alertHtml += `<div class="alert-item">${n}</div>`; });
+   alertHtml += '</div>';
+   toast(alerts.removed.length + ' trip' + (alerts.removed.length === 1 ? '' : 's') + ' removed from new file — cancel manually in RouteGenie', 'warning', 8000);
+  }
   if (alerts.longDistance.length > 0) {
    alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_DIST}Long-distance trips &gt;100 mi (${alerts.longDistance.length})</div>`;
    alerts.longDistance.forEach(n => { alertHtml += `<div class="alert-item">${n}</div>`; });
@@ -1050,7 +1150,10 @@ async function processFile() {
   const pct = total > 0 ? Math.max(2, Math.round((count / total) * 100)) : 0;
   return `<span class="bar-track"><span class="bar-fill" style="width:${count > 0 ? pct : 0}%"></span></span>`;
  };
- const modeNote = mode === 'compare' ? `<div class="breakdown-row"><span class="desc">New trips found (vs older file)</span><span class="count">${stats.total}</span></div>` : '';
+ const modeNote = mode === 'compare' ? `
+ <div class="breakdown-row"><span class="desc">New + modified trips exported</span><span class="count">${stats.total}</span></div>
+ <div class="breakdown-row"><span class="desc">— of which modified (vs older file)</span><span class="count">${stats.modified}</span></div>
+ ${diffResult && diffResult.removed.length ? `<div class="breakdown-row"><span class="desc">Removed in new file (cancel in RG)</span><span class="count">${diffResult.removed.length}</span></div>` : ''}` : '';
  document.getElementById('breakdown').innerHTML = `<h3>Breakdown</h3>
  ${modeNote}
  <div class="breakdown-row"><span class="desc">Return times extracted from notes</span>${_bar(stats.extracted, stats.total)}<span class="count">${stats.extracted}</span></div>
