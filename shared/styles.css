@@ -203,6 +203,38 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; min-
   .result-grid .stat.primary { border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
 }
 
+/* Desktop — use more screen width to reduce vertical scrolling.
+   At 800px+ the card grows from 680→880px (more breathing room for stats/drop zones).
+   At 1100px+ the card grows to 1100px AND, when the alerts panel is shown, alerts
+   move to a left column and results take the right column — no more long scroll. */
+@media (min-width: 800px) {
+  .card { max-width: 880px; }
+}
+@media (min-width: 1100px) {
+  .card { max-width: 1100px; }
+  /* Side-by-side layout: alerts (col 1) + results (col 2) when both populated. */
+  .card:has(.alerts.visible) {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 1.5rem;
+    align-items: start;
+  }
+  .card:has(.alerts.visible) > *:not(.alerts):not(.results) {
+    grid-column: 1 / -1;
+  }
+  .card:has(.alerts.visible) > .results {
+    grid-column: 2;
+    margin-top: 0;
+  }
+  .card:has(.alerts.visible) > .alerts {
+    margin-bottom: 0;
+  }
+  /* Stats grid would be cramped at 4-col in a 500px column → condense to 2-col. */
+  .card:has(.alerts.visible) > .results .result-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
 /* Mobile responsive */
 @media (max-width: 600px) {
   body { padding: 1rem; }
