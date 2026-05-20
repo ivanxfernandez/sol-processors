@@ -1014,16 +1014,16 @@ function _doProcess() {
         alertHtml += '</div>';
       }
       if (alerts.removed.length > 0) {
-        alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_TRASH}Removed from new file — cancel in RouteGenie (${alerts.removed.length})</div>`;
+        alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_TRASH}Removed from VetRide — cancel in RG (${alerts.removed.length})</div>`;
         alerts.removed.forEach(n => { alertHtml += `<div class="alert-item">${n}</div>`; });
         alertHtml += '</div>';
-        toast(alerts.removed.length + ' trip' + (alerts.removed.length === 1 ? '' : 's') + ' removed from new file — cancel manually in RouteGenie', 'warning', 8000);
+        toast(alerts.removed.length + ' trip' + (alerts.removed.length === 1 ? '' : 's') + ' removed from VetRide — cancel manually in RG', 'warning', 8000);
       }
       if (alerts.nowCanceled.length > 0) {
-        alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_BAN}Newly canceled — cancel in RouteGenie (${alerts.nowCanceled.length})</div>`;
+        alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_BAN}Canceled in VetRide — cancel in RG (${alerts.nowCanceled.length})</div>`;
         alerts.nowCanceled.forEach(n => { alertHtml += `<div class="alert-item">${n}</div>`; });
         alertHtml += '</div>';
-        toast(alerts.nowCanceled.length + ' trip' + (alerts.nowCanceled.length === 1 ? '' : 's') + ' newly canceled — cancel in RouteGenie', 'warning', 8000);
+        toast(alerts.nowCanceled.length + ' trip' + (alerts.nowCanceled.length === 1 ? '' : 's') + ' canceled in VetRide — cancel in RG', 'warning', 8000);
       }
       if (alerts.longDistance.length > 0) {
         alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_DIST}Long-distance trips &gt;100 mi (${alerts.longDistance.length})</div>`;
@@ -1062,8 +1062,8 @@ function _doProcess() {
     const _compareRows = mode === 'compare' ? `
       <div class="breakdown-row"><span class="desc">New + modified trips exported</span><span class="count">${stats.total}</span></div>
       <div class="breakdown-row"><span class="desc">— of which modified (vs older file)</span><span class="count">${stats.modified}</span></div>
-      ${diffResult && diffResult.removed.length ? `<div class="breakdown-row"><span class="desc">Removed in new file (cancel in RG)</span><span class="count">${diffResult.removed.length}</span></div>` : ''}
-      ${diffResult && diffResult.nowCanceled.length ? `<div class="breakdown-row"><span class="desc">Newly canceled (cancel in RG)</span><span class="count">${diffResult.nowCanceled.length}</span></div>` : ''}` : '';
+      ${diffResult && diffResult.removed.length ? `<div class="breakdown-row"><span class="desc">Removed from VetRide (cancel in RG)</span><span class="count">${diffResult.removed.length}</span></div>` : ''}
+      ${diffResult && diffResult.nowCanceled.length ? `<div class="breakdown-row"><span class="desc">Canceled in VetRide (cancel in RG)</span><span class="count">${diffResult.nowCanceled.length}</span></div>` : ''}` : '';
     document.getElementById('breakdown').innerHTML = `<h3>Breakdown</h3>
       ${_compareRows}
       <div class="breakdown-row"><span class="desc">Will call trips created</span>${_bar(stats.willCall, stats.total)}<span class="count">${stats.willCall}</span></div>
