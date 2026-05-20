@@ -952,10 +952,9 @@ async function processFile() {
     const distI = idx['Estimated Distance (miles)'];
     const distVal = distI !== undefined ? parseFloat(r[distI]) : NaN;
     const isLBVA = doAddr && String(doAddr).includes('5901');
-    const isDialysisAppt = isDialysisTrip(notes, doAddr);
     let offset;
-    if (isDialysisAppt && !isLBVA && !isNaN(distVal) && distVal < 10) {
-     offset = 60; // dialysis, not VA, < 10 mi
+    if (!isLBVA && !isNaN(distVal) && distVal < 10) {
+     offset = 60; // any non-VA trip < 10 mi
     } else if (!isNaN(distVal)) {
      if (distVal > 100) {
       offset = 240;
