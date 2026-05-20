@@ -745,25 +745,39 @@ function indexByStableKey(sheets) {
  }
  return { byKey, idx };
 }
+function isCanceledRow(row, idx) {
+ const status = idx['Status'] !== undefined ? row[idx['Status']] : null;
+ const appt = idx['Appointment Time'] !== undefined ? row[idx['Appointment Time']] : null;
+ if (status && String(status).toLowerCase() === 'canceled') return true;
+ if (appt && String(appt).trim().toUpperCase() === 'N/A') return true;
+ return false;
+}
 function diffSheets(oldSheets, newSheets) {
  const oldD = indexByStableKey(oldSheets);
  const newD = indexByStableKey(newSheets);
  const newKeys = new Set();
  const modifiedKeys = new Set();
  const removed = [];
+ const nowCanceled = []; // scheduled in old, canceled in new
  const changeMap = new Map();
  for (const [key, { row, content }] of newD.byKey) {
   const oldEntry = oldD.byKey.get(key);
   if (!oldEntry) newKeys.add(key);
   else if (oldEntry.content !== content) {
-   modifiedKeys.add(key);
-   changeMap.set(key, describeChanges(oldEntry.row, row, newD.idx));
+   const oldCx = isCanceledRow(oldEntry.row, oldD.idx);
+   const newCx = isCanceledRow(row, newD.idx);
+   if (newCx && !oldCx) {
+    nowCanceled.push({ key, row, idx: newD.idx });
+   } else {
+    modifiedKeys.add(key);
+    changeMap.set(key, describeChanges(oldEntry.row, row, newD.idx));
+   }
   }
  }
  for (const [key, entry] of oldD.byKey) {
   if (!newD.byKey.has(key)) removed.push({ key, row: entry.row, idx: oldD.idx });
  }
- return { newKeys, modifiedKeys, removed, changeMap };
+ return { newKeys, modifiedKeys, removed, nowCanceled, changeMap };
 }
 
 function to24h(str) {
@@ -915,14 +929,20 @@ async function processFile() {
  }
  setProgress(45, 'Processing trips...');
  const stats = { total: 0, extracted: 0, vaLB: 0, copied: 0, stretcher: 0, wheelchair: 0, modified: 0 };
- const alerts = { bariatric: [], waitReturn: [], excluded: [], outOfState: [], longDistance: [], modified: [], removed: [] };
- // Populate removed-trip alerts from diff (trips in old file no longer in new)
+ const alerts = { bariatric: [], waitReturn: [], excluded: [], outOfState: [], longDistance: [], modified: [], removed: [], nowCanceled: [] };
+ // Populate diff-derived alerts
  if (diffResult) {
   for (const { row: oldRow, idx: oldIdx } of diffResult.removed) {
    const p = oldIdx['Passenger'] !== undefined ? oldRow[oldIdx['Passenger']] : 'Unknown';
    const t = oldIdx['Trip Type'] !== undefined ? oldRow[oldIdx['Trip Type']] : '';
    const m = oldIdx['Mobility'] !== undefined ? oldRow[oldIdx['Mobility']] : '';
    alerts.removed.push(`${cleanName(p) || p} (${t}, ${m || 'unknown'})`);
+  }
+  for (const { row: newRow, idx: newIdx } of diffResult.nowCanceled) {
+   const p = newIdx['Passenger'] !== undefined ? newRow[newIdx['Passenger']] : 'Unknown';
+   const t = newIdx['Trip Type'] !== undefined ? newRow[newIdx['Trip Type']] : '';
+   const m = newIdx['Mobility'] !== undefined ? newRow[newIdx['Mobility']] : '';
+   alerts.nowCanceled.push(`${cleanName(p) || p} (${t}, ${m || 'unknown'}) — was scheduled, now canceled`);
   }
  }
  let excludedCount = 0;
@@ -1094,7 +1114,7 @@ async function processFile() {
  setProgress(100, 'Done!');
  toast('Processed ' + stats.total + ' trip' + (stats.total === 1 ? '' : 's'), 'success');
  if (document.getElementById('alertSearch')) document.getElementById('alertSearch').value = '';
- if (alerts.bariatric.length > 0 || alerts.waitReturn.length > 0 || alerts.excluded.length > 0 || alerts.outOfState.length > 0 || alerts.longDistance.length > 0 || alerts.modified.length > 0 || alerts.removed.length > 0) {
+ if (alerts.bariatric.length > 0 || alerts.waitReturn.length > 0 || alerts.excluded.length > 0 || alerts.outOfState.length > 0 || alerts.longDistance.length > 0 || alerts.modified.length > 0 || alerts.removed.length > 0 || alerts.nowCanceled.length > 0) {
   const ICON_WARN = '<svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
   const ICON_CLOCK = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
   const ICON_BAN = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>';
@@ -1113,6 +1133,12 @@ async function processFile() {
    alerts.removed.forEach(n => { alertHtml += `<div class="alert-item">${n}</div>`; });
    alertHtml += '</div>';
    toast(alerts.removed.length + ' trip' + (alerts.removed.length === 1 ? '' : 's') + ' removed from new file — cancel manually in RouteGenie', 'warning', 8000);
+  }
+  if (alerts.nowCanceled.length > 0) {
+   alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_BAN}Newly canceled — cancel in RouteGenie (${alerts.nowCanceled.length})</div>`;
+   alerts.nowCanceled.forEach(n => { alertHtml += `<div class="alert-item">${n}</div>`; });
+   alertHtml += '</div>';
+   toast(alerts.nowCanceled.length + ' trip' + (alerts.nowCanceled.length === 1 ? '' : 's') + ' newly canceled — cancel in RouteGenie', 'warning', 8000);
   }
   if (alerts.longDistance.length > 0) {
    alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_DIST}Long-distance trips &gt;100 mi (${alerts.longDistance.length})</div>`;
@@ -1153,7 +1179,8 @@ async function processFile() {
  const modeNote = mode === 'compare' ? `
  <div class="breakdown-row"><span class="desc">New + modified trips exported</span><span class="count">${stats.total}</span></div>
  <div class="breakdown-row"><span class="desc">— of which modified (vs older file)</span><span class="count">${stats.modified}</span></div>
- ${diffResult && diffResult.removed.length ? `<div class="breakdown-row"><span class="desc">Removed in new file (cancel in RG)</span><span class="count">${diffResult.removed.length}</span></div>` : ''}` : '';
+ ${diffResult && diffResult.removed.length ? `<div class="breakdown-row"><span class="desc">Removed in new file (cancel in RG)</span><span class="count">${diffResult.removed.length}</span></div>` : ''}
+ ${diffResult && diffResult.nowCanceled.length ? `<div class="breakdown-row"><span class="desc">Newly canceled (cancel in RG)</span><span class="count">${diffResult.nowCanceled.length}</span></div>` : ''}` : '';
  document.getElementById('breakdown').innerHTML = `<h3>Breakdown</h3>
  ${modeNote}
  <div class="breakdown-row"><span class="desc">Return times extracted from notes</span>${_bar(stats.extracted, stats.total)}<span class="count">${stats.extracted}</span></div>
