@@ -178,15 +178,21 @@ const KEEP_DATA_COLS = new Set([
  'Appointment Time','Pickup Address','Dropoff Address','VA Notes'
 ]);
 const VETERAN_OVERRIDES = [
+ // M-W-F dialysis (days 1, 3, 5)
  { name: ['allen', 'merrell'],      days: [1,3,5], pickup: '11:15', return_: '16:00' },
  { name: ['fabio', 'villareal'],    days: [1,3,5], pickup: '06:00', return_: '11:30' },
  { name: ['ramon', 'paredes'],      days: [1,3,5], pickup: '09:00', return_: null    },
+ { name: ['richard', 'garcia'],     days: [1,3,5], pickup: '03:00', return_: null    },
+ { name: ['lee', 'stanley'],        days: [1,3,5], pickup: '04:15', return_: null    },
+ { name: ['otis', 'hodges'],        days: [1,3,5], pickup: '07:00', return_: null    },
+ // T-Th-S dialysis (days 2, 4, 6)
  { name: ['nonilon', 'penalba'],    days: [2,4,6], pickup: '05:00', return_: null    },
  { name: ['vincent', 'donini'],     days: [2,4,6], pickup: '06:30', return_: null    },
  { name: ['darryl', 'linder'],      days: [2,4,6], pickup: '07:00', return_: '12:45' },
  { name: ['joe', 'morris'],         days: [2,4,6], pickup: '08:15', return_: null    },
  { name: ['kevin', 'curry'],        days: [2,4,6], pickup: '09:00', return_: '14:15' },
  { name: ['charles', 'woodland'],   days: [2,4,6], pickup: '11:15', return_: '16:00' },
+ { name: ['frankie', 'nash'],       days: [2,4,6], pickup: '11:00', return_: null    },
 ];
 
 const DIALYSIS_EXCLUDES = [];
