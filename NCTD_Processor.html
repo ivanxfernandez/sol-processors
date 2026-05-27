@@ -279,7 +279,22 @@ function getFingerprints(sheets) {
  }
  return prints;
 }
-function parseRows(rows) {
+// Extract a date from a filename like "SOL 5.27.26.xlsx" or "5-27-2026 NCTD.csv".
+// Returns YYYY-MM-DD or null. 2-digit years are expanded to 20YY.
+function extractDateFromFilename(filename) {
+ if (!filename) return null;
+ const base = filename.replace(/\.[^.]+$/, '');
+ const m = base.match(/(\d{1,2})[.\-_/](\d{1,2})[.\-_/](\d{2,4})/);
+ if (!m) return null;
+ let mo = m[1].padStart(2, '0');
+ let dd = m[2].padStart(2, '0');
+ let yy = m[3];
+ if (yy.length === 2) yy = '20' + yy;
+ if (parseInt(mo) > 12 || parseInt(dd) > 31) return null;
+ return `${yy}-${mo}-${dd}`;
+}
+
+function parseRows(rows, filename) {
  if (!rows || rows.length === 0) return { trips: [], datelessTrips: [], fallbackDate: null };
  const firstRow = rows[0] || [];
  const firstVals = firstRow.map(v => String(v || '').toLowerCase());
@@ -298,6 +313,11 @@ function parseRows(rows) {
  const col2IsDate = isDateVal(r0[2]);
  // Format D: date(0), name(1), member_id(2>60000), pu_time(3) - new SOL format
  const col2IsMemberId = typeof r0[2] === 'number' && r0[2] > 60000;
+ // Format E (SOL no-date): name(0) | memberId(1) | timeFraction(2) | addresses 3-8
+ // — no date column at all. Date is sourced from the filename ("SOL M.D.YY.xlsx").
+ const col0IsName = typeof r0[0] === 'string' && /[A-Za-z]/.test(r0[0]) && !isDateVal(r0[0]);
+ const col2IsTimeFraction = typeof r0[2] === 'number' && r0[2] > 0 && r0[2] < 1;
+ let isSolNoDate = false;
  if (col0IsDate && col2IsMemberId) {
  dateCol=0; nameCol=1; puTimeCol=3; puAddrCol=4; puCityCol=5; puZipCol=6;
  doAddrCol=7; doCityCol=8; doZipCol=9; place1Col=11; place2Col=12;
@@ -310,6 +330,14 @@ function parseRows(rows) {
  nameCol=0; dateCol=2; puTimeCol=3; puAddrCol=4; puCityCol=5; puZipCol=6;
  doAddrCol=7; doCityCol=8; doZipCol=9; place1Col=13; place2Col=14;
  mobilityCol=16; notesCol=19;
+ } else if (col0IsName && col1IsNum && col2IsTimeFraction) {
+ // SOL no-date layout: name | memberId | timeFraction | puAddr | puCity | puZip | doAddr | doCity | doZip | dist | place1 | place2 | CLI | mobility | ...
+ isSolNoDate = true;
+ nameCol=0; dateCol=-1; puTimeCol=2;
+ puAddrCol=3; puCityCol=4; puZipCol=5;
+ doAddrCol=6; doCityCol=7; doZipCol=8;
+ place1Col=10; place2Col=11;
+ mobilityCol=13; notesCol=16;
  } else {
  nameCol=0; dateCol=1; puTimeCol=2; puAddrCol=3; puCityCol=4; puZipCol=5;
  doAddrCol=6; doCityCol=7; doZipCol=8; place1Col=10; place2Col=11;
@@ -321,7 +349,7 @@ function parseRows(rows) {
  if (!row || row.every(v => v === null || v === undefined || v === '')) continue;
  const name = row[nameCol];
  if (!name || String(name).trim() === '') continue;
- const dateStr = extractDateStr(row[dateCol]);
+ const dateStr = dateCol >= 0 ? extractDateStr(row[dateCol]) : null;
  const puTime = row[puTimeCol];
  const puAddr = buildAddr(row[puAddrCol], row[puCityCol], row[puZipCol]);
  const doAddr = buildAddr(row[doAddrCol], row[doCityCol], row[doZipCol]);
@@ -341,6 +369,9 @@ function parseRows(rows) {
  if (dateStr) {
  if (!fallbackDate) fallbackDate = dateStr;
  trips.push(trip);
+ } else if (isSolNoDate) {
+ // SOL no-date: every row is dateless, push using the proper column mapping
+ datelessTrips.push(trip);
  } else {
  const puTime2 = row[1];
  const puAddr2 = buildAddr(row[2], row[3], row[4]);
@@ -356,6 +387,11 @@ function parseRows(rows) {
  });
  }
  }
+ }
+ // If we ended up with only dateless trips, try to source the date from the filename.
+ if (!fallbackDate) {
+ const fnDate = extractDateFromFilename(filename);
+ if (fnDate) fallbackDate = fnDate;
  }
  return { trips, datelessTrips, fallbackDate };
 }
@@ -490,7 +526,7 @@ async function _doProcess() {
  for (let fi = 0; fi < loadedFiles.length; fi++) {
  const f = loadedFiles[fi];
  setProgress(10 + (fi / loadedFiles.length) * 60, `Processing ${f.name}...`);
- const { trips, datelessTrips, fallbackDate } = parseRows(f.rows);
+ const { trips, datelessTrips, fallbackDate } = parseRows(f.rows, f.name);
  if (!firstDate && fallbackDate) firstDate = fallbackDate;
  if (datelessTrips.length > 0) {
  const dateLabel = firstDate || 'the file date';
