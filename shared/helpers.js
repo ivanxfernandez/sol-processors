@@ -12,20 +12,21 @@ function cleanName(name) {
 }
 
 /* Detect non-California addresses. Returns state code (e.g. "NV"), "non-CA", or null.
-   Logic: first try ", XX 12345" state-abbrev pattern; fallback to ZIP range check
-   (CA: 90000-96199). Returns null when CA or undeterminable. */
+   Logic: first try ", XX 12345" state-abbrev pattern; fallback to checking the LAST
+   5-digit sequence in the address (ZIPs are conventionally at the end). Using "last"
+   instead of "first" prevents false positives when the street number is 5 digits
+   (e.g. "11633 Sorrento Valley Rd San Diego 92121" — 11633 isn't the ZIP, 92121 is).
+   CA ZIP range: 90000-96199. Returns null when CA or undeterminable. */
 function isOutOfState(addr) {
   if (!addr) return null;
   const s = String(addr);
   const stMatch = s.match(/,\s*([A-Z]{2})\b[^,]*?\b\d{5}\b/);
   if (stMatch) return stMatch[1] !== 'CA' ? stMatch[1] : null;
-  const zipMatch = s.match(/\b(\d{5})\b/);
-  if (zipMatch) {
-    const z = parseInt(zipMatch[1]);
-    if (z >= 90000 && z <= 96199) return null;
-    return 'non-CA';
-  }
-  return null;
+  const zipMatches = [...s.matchAll(/\b(\d{5})\b/g)];
+  if (zipMatches.length === 0) return null;
+  const lastZip = parseInt(zipMatches[zipMatches.length - 1][1]);
+  if (lastZip >= 90000 && lastZip <= 96199) return null;
+  return 'non-CA';
 }
 
 /* Parse a free-form time string into {h, m} 24-hour components.
