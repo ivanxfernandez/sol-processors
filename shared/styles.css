@@ -81,26 +81,63 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; min-
 .btn-include { background: var(--accent); color: #fff; }
 .btn-skip { background: #eee; color: #555; }
 .btn-skip:hover { background: #e0e0e0; }
-.alerts { display: none; background: #fffbea; border: 1px solid #f5d87c; border-radius: 12px; padding: 16px; margin-bottom: 1.25rem; }
+.alerts { display: none; background: linear-gradient(180deg, #fffbea 0%, #fff9e0 100%); border: 1px solid #f5d87c; border-radius: 12px; padding: 18px; margin-bottom: 1.25rem; box-shadow: 0 1px 3px rgba(122,92,0,0.05); }
 .alerts.visible { display: block; }
-.alerts h3 { font-size: 13px; font-weight: 700; color: #7a5c00; margin-bottom: 10px; }
-.alert-section { margin-bottom: 12px; }
+.alerts h3 { font-size: 13px; font-weight: 700; color: #7a5c00; margin-bottom: 12px; letter-spacing: 0.01em; }
+.alert-section { margin-bottom: 14px; }
 .alert-section:last-child { margin-bottom: 0; }
-.alert-title { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #7a5c00; margin-bottom: 6px; }
+.alert-title { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: #7a5c00; margin-bottom: 8px; letter-spacing: 0.005em; }
 .alert-title svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
-.alert-item { font-size: 12px; color: #5a4000; padding: 3px 0 3px 12px; border-left: 3px solid #f5d87c; margin-bottom: 3px; }
+.alert-item { font-size: 12px; line-height: 1.5; color: #5a4000; padding: 4px 0 4px 12px; border-left: 3px solid #f5d87c; margin-bottom: 4px; transition: border-color 0.15s ease, padding-left 0.15s ease; word-break: normal; overflow-wrap: anywhere; }
+.alert-item:hover { border-left-color: #d4a800; padding-left: 14px; }
 
-/* Animations */
+/* Animations — entrance, stagger, and interaction polish */
 @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeSlideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes cardEnter { from { opacity: 0; transform: translateY(16px) scale(0.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+.card { animation: cardEnter 0.45s cubic-bezier(.22,.61,.36,1) both; }
 .file-pill, .alerts.visible, .results.visible, .error-box.visible, .prompt-box.visible {
   animation: fadeSlideIn 0.25s ease-out;
 }
-.stat .value { transition: color 0.3s; }
-.btn, .btn-download, .btn-reset, .mode-tab, .drop-zone {
-  transition: transform 0.15s, background 0.2s, border-color 0.2s, filter 0.2s;
+
+/* Stagger stats + breakdown rows on results show */
+.results.visible .stat              { animation: fadeSlideUp 0.4s cubic-bezier(.22,.61,.36,1) both; }
+.results.visible .stat:nth-child(1) { animation-delay: 0.05s; }
+.results.visible .stat:nth-child(2) { animation-delay: 0.10s; }
+.results.visible .stat:nth-child(3) { animation-delay: 0.15s; }
+.results.visible .stat:nth-child(4) { animation-delay: 0.20s; }
+.results.visible .breakdown         { animation: fadeSlideUp 0.45s cubic-bezier(.22,.61,.36,1) both; animation-delay: 0.25s; }
+.results.visible .btn-preview       { animation: fadeSlideUp 0.45s cubic-bezier(.22,.61,.36,1) both; animation-delay: 0.30s; }
+
+/* Bar fill animation — counts up from 0 on render */
+@keyframes barFill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.breakdown-row .bar-fill { transform-origin: left; animation: barFill 0.7s cubic-bezier(.22,.61,.36,1) both; animation-delay: 0.35s; }
+
+.stat .value { transition: color 0.3s ease; }
+.stat { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.stat:hover { transform: translateY(-1px); }
+.btn, .btn-download, .btn-reset, .mode-tab, .drop-zone, .btn-preview {
+  transition: transform 0.15s ease, background 0.2s ease, border-color 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
 }
+.btn:hover:not(:disabled), .btn-download:hover { box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 25%, transparent); }
 .btn:active:not(:disabled), .btn-download:active { transform: translateY(1px); }
 .mode-tab:active, .drop-zone:active { transform: scale(0.99); }
+.mode-tab.active { box-shadow: inset 0 0 0 1px var(--accent), 0 1px 4px color-mix(in srgb, var(--accent) 12%, transparent); }
+
+/* Drop zone — subtle scale-pulse on drag-over to confirm drop target */
+@keyframes dropPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.005); } }
+.drop-zone.drag-over { animation: dropPulse 1.2s ease-in-out infinite; box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent); }
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 
 /* Keyboard shortcut hint chips */
 .kbd-hint { display: inline-block; padding: 1px 6px; border: 1px solid currentColor; border-radius: 4px; font-size: 10px; margin-left: 8px; opacity: 0.55; font-family: 'DM Mono', ui-monospace, monospace; font-weight: 500; line-height: 1.2; vertical-align: 1px; }
@@ -142,15 +179,47 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; min-
 .alert-search { width: 100%; padding: 7px 10px; border: 1px solid var(--accent-border); border-radius: 6px; font-size: 12px; margin-bottom: 10px; background: #fff; color: #333; font-family: inherit; box-sizing: border-box; }
 .alert-search:focus { outline: none; border-color: var(--accent); }
 
-/* Header accent bar + primary stat treatment */
-.card { position: relative; }
-.card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--accent); border-radius: 16px 16px 0 0; }
+/* Header accent bar (gradient) + primary stat treatment + breakdown polish */
+.card { position: relative; box-shadow: 0 4px 24px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04); }
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 70%, white));
+  border-radius: 16px 16px 0 0;
+}
+
 .result-grid .stat.primary {
   background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 18%, transparent), color-mix(in srgb, var(--accent) 6%, transparent));
   border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 8%, transparent);
 }
-.result-grid .stat.primary .label { color: var(--accent); font-weight: 600; opacity: 0.9; }
-.result-grid .stat.primary .value { font-size: 28px; }
+.result-grid .stat.primary .label { color: var(--accent); font-weight: 600; opacity: 0.9; letter-spacing: 0.02em; }
+.result-grid .stat.primary .value { font-size: 28px; letter-spacing: -0.02em; }
+
+/* Breakdown row hover — subtle highlight to track which row you're scanning */
+.breakdown-row { transition: background 0.15s ease, padding-left 0.15s ease; border-radius: 4px; padding-left: 4px; padding-right: 4px; margin-left: -4px; margin-right: -4px; }
+.breakdown-row:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.breakdown-row .count { font-variant-numeric: tabular-nums; }
+.stat .value { font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+
+/* Process button — slightly more polished resting state */
+.btn { letter-spacing: 0.01em; box-shadow: 0 1px 2px color-mix(in srgb, var(--accent) 18%, transparent); }
+.btn:disabled { box-shadow: none; }
+
+/* Filter input — better focus state */
+.alert-search { transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease; }
+.alert-search:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+.alert-search::placeholder { color: #b08400; opacity: 0.7; }
+
+/* Preview tab — better active state */
+.preview-tab { font-variant-numeric: tabular-nums; }
+.preview-tab.active { box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 22%, transparent); }
+
+/* Preview table — subtle zebra striping for readability */
+.preview-table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--accent) 2%, transparent); }
+.preview-table tbody tr:hover td { background: color-mix(in srgb, var(--accent) 7%, transparent) !important; }
 
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
@@ -201,22 +270,32 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; min-
   .preview-footer button { background: #12151f; border-color: #2a2f42; color: #9ba3bb; }
   .alert-search { background: #12151f; border-color: #2a2f42; color: #e0e4f0; }
   .result-grid .stat.primary { border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+  .card { box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.2); }
+  .alerts { background: #1f1a0a; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+  .alert-search::placeholder { color: #8a7a40; opacity: 0.7; }
+  .breakdown-row:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .preview-table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+  .preview-table tbody tr:hover td { background: color-mix(in srgb, var(--accent) 12%, transparent) !important; }
+  .alert-item { color: #c8a040; }
+  .alert-item:hover { border-left-color: #d4a800; }
 }
 
 /* Desktop — use more screen width to reduce vertical scrolling.
-   At 800px+ the card grows from 680→880px (more breathing room for stats/drop zones).
-   At 1100px+ the card grows to 1100px AND, when the alerts panel is shown, alerts
-   move to a left column and results take the right column — no more long scroll. */
+   At 800px+ the card grows to ~900px (more breathing room for stats/drop zones).
+   At 1180px+ the card grows to 1180px AND, when the alerts panel is shown, alerts
+   take ~42% of the width with a 340px floor and results take ~58%. The min-width
+   on the alerts column prevents the awkward narrow-column text wrapping we saw at
+   pure 50/50. At 1480px the card grows again to give even more breathing room. */
 @media (min-width: 800px) {
-  .card { max-width: 880px; }
+  .card { max-width: 900px; }
 }
-@media (min-width: 1100px) {
-  .card { max-width: 1100px; }
-  /* Side-by-side layout: alerts (col 1) + results (col 2) when both populated. */
+@media (min-width: 1180px) {
+  .card { max-width: 1180px; }
+  /* Side-by-side: alerts (col 1, 42%) + results (col 2, 58%). minmax floors prevent squeeze. */
   .card:has(.alerts.visible) {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    column-gap: 1.5rem;
+    grid-template-columns: minmax(340px, 5fr) minmax(0, 7fr);
+    column-gap: 1.75rem;
     align-items: start;
   }
   .card:has(.alerts.visible) > *:not(.alerts):not(.results) {
@@ -229,10 +308,16 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; min-
   .card:has(.alerts.visible) > .alerts {
     margin-bottom: 0;
   }
-  /* Stats grid would be cramped at 4-col in a 500px column → condense to 2-col. */
+  /* Stats grid: condense to 2-col in narrow results column. */
   .card:has(.alerts.visible) > .results .result-grid {
     grid-template-columns: repeat(2, 1fr) !important;
   }
+  /* Preview table sticks within its column — no horizontal overflow forcing scroll on the page. */
+  .card:has(.alerts.visible) > .results .preview-table { min-width: 0; }
+  .card:has(.alerts.visible) > .results .preview-table td { max-width: 160px; }
+}
+@media (min-width: 1480px) {
+  .card { max-width: 1320px; }
 }
 
 /* Mobile responsive */
