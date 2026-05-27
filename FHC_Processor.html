@@ -308,7 +308,7 @@ function parseRows(rows) {
  const dataRows = rows.slice(headerIdx + 1).filter(r => r && r.some(v => v !== null && v !== '' && v !== undefined));
  const iClient = findCol(headers, 'client');
  const iPhone = findCol(headers, 'client phone', 'phone');
- const iPuTime = findCol(headers, 'pu time');
+ let iPuTime = findCol(headers, 'pu time');
  const iPuAddr = findCol(headers, 'pu address');
  const iDoAddr = findCol(headers, 'do address');
  const iDoZip = findCol(headers, 'do zip');
@@ -318,6 +318,26 @@ function parseRows(rows) {
  for (let i = headers.length - 1; i >= 0; i--) {
  if (!headers[i] || headers[i].startsWith('Unnamed')) { iNotes = i; break; }
  }
+ }
+ // Fallback: some FHC exports (e.g. SOL SOUTH) omit the "PU Time" header
+ // but include the data. Scan unassigned columns for time-like values.
+ if (iPuTime < 0) {
+  const claimed = new Set([iClient, iPhone, iPuAddr, iDoAddr, iDoZip, iMobility, iNotes].filter(x => x >= 0));
+  const timeRe = /^\s*\d{1,2}:\d{2}(\s*[AP]M)?\s*$|^\s*\d{1,2}\s*[AP]M\s*$/i;
+  const sample = dataRows.slice(0, Math.min(10, dataRows.length));
+  let best = -1, bestHits = 0;
+  for (let c = 0; c < headers.length; c++) {
+   if (claimed.has(c)) continue;
+   let hits = 0, total = 0;
+   for (const r of sample) {
+    const v = r ? r[c] : null;
+    if (v == null || v === '') continue;
+    total++;
+    if (timeRe.test(String(v))) hits++;
+   }
+   if (total > 0 && hits / total >= 0.6 && hits > bestHits) { best = c; bestHits = hits; }
+  }
+  if (best >= 0) iPuTime = best;
  }
  const trips = [];
  for (const row of dataRows) {
