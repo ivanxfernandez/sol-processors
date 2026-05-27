@@ -597,20 +597,22 @@ async function processFile() {
      }
     } else {
     let totalMins = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]);
-    const doAddr = idx['Dropoff Address'] !== undefined ? r[idx['Dropoff Address']] : null;
     const distI = idx['Estimated Distance (miles)'];
     const distVal = distI !== undefined ? parseFloat(r[distI]) : NaN;
-    const isLBVA = doAddr && String(doAddr).includes('5901');
     let offset;
-    if (!isLBVA && !isNaN(distVal) && distVal < 10) {
-     offset = 60; // any non-VA trip < 10 mi
-    } else if (!isNaN(distVal)) {
-     if (distVal > 100) offset = 240;       // long-distance alert already emitted in main loop
-     else if (distVal > 70) offset = 240;
-     else if (distVal > 45) offset = 180;
-     else offset = 120;
+    // Distance tiers (apply to ALL Incoming trips regardless of destination, incl. LBVA-bound).
+    // At every tier boundary the higher tier wins (e.g. 100.0 mi → 3hr, 70.0 mi → 2.5hr, 140.0 mi → 3.5hr).
+    // Exception: "25 and under" is fully inclusive → 25.0 mi = 1hr, 25.1 mi = 2hr.
+    // Veteran overrides + preferred-pickup notes already short-circuited above this block.
+    if (!isNaN(distVal)) {
+     if (distVal > 200)      offset = 240;  //  >200 mi → 4 hr (also flagged via long-distance alert in main loop)
+     else if (distVal >= 140) offset = 210;  // 140–200 → 3.5 hr
+     else if (distVal >= 100) offset = 180;  // 100–140 → 3 hr
+     else if (distVal >= 70)  offset = 150;  //  70–100 → 2.5 hr
+     else if (distVal > 25)   offset = 120;  //  25–70  → 2 hr
+     else                     offset = 60;   //   ≤25   → 1 hr
     } else {
-     offset = 120; // unknown distance fallback
+     offset = 120; // unknown distance fallback (2 hr)
     }
     totalMins -= offset;
     if (totalMins < 0) totalMins += 1440;
