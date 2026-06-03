@@ -244,11 +244,11 @@ function extractTimeFromNotes(notes) {
   if (!/[AP]M|:/i.test(m[1]+m[2])) continue;
   const t = to24h(m[2]); if (t && t.h <= 23) return t;
  }
- const pp = text.match(/preferred\s+pick\s*up\s+(?:time\s+)?(?:at\s+)?(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i);
+ const pp = text.match(/preferred\s+pick[\s-]*up\s+(?:time\s+)?(?:(?:at|of)\s+)?(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i);
  if (pp) { const t=to24h(pp[1]); if(t) return t; }
- const ret = text.match(/return\s+(?:pick\s*up\s+(?:from\s+\w+\s+)?at\s+|(?:home\s+)?(?:at\s+)?)(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i);
+ const ret = text.match(/return\s+(?:pick[\s-]*up\s+(?:from\s+\w+\s+)?at\s+|(?:home\s+)?(?:at\s+)?)(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i);
  if (ret) { const t=to24h(ret[1]); if(t) return t; }
- const vr = text.match(/(?:request(?:ing)?\s+to\s+be\s+pick(?:ed)?\s+up|veteran\s+request(?:ing)?(?:\s+to\s+be)?\s+pick(?:ed)?\s+up)\s+(?:at\s+)?(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i);
+ const vr = text.match(/(?:request(?:ing)?\s+to\s+be\s+pick(?:ed)?[\s-]+up|veteran\s+request(?:ing)?(?:\s+to\s+be)?\s+pick(?:ed)?[\s-]+up)\s+(?:at\s+)?(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i);
  if (vr) { const t=to24h(vr[1]); if(t) return t; }
  const ct = text.match(/chair\s+time\s+(?:at\s+|@\s*)(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i);
  if (ct) { const t=to24h(ct[1]); if(t) return t; }
@@ -439,7 +439,8 @@ function parseHeaderRows(rows) {
  notes: notesCol >= 0 ? String(row[notesCol] || '').trim() || null : null
  });
  }
- return trips;
+ // Match parseRows' return shape so the caller's destructuring works.
+ return { trips, datelessTrips: [], fallbackDate: trips.length ? trips[0].dateStr : null };
 }
 let _promptResolve = null;
 function showPrompt(msg) {
@@ -493,7 +494,7 @@ function renderFileList() {
  loadedFiles.forEach((f, i) => {
  const pill = document.createElement('div');
  pill.className = 'file-pill';
- pill.innerHTML = `<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg><span>${f.name}</span><button class="remove" onclick="removeFile(${i})">✕</button>`;
+ pill.innerHTML = `<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg><span>${_esc(f.name)}</span><button class="remove" onclick="removeFile(${i})">✕</button>`;
  list.appendChild(pill);
  });
 }
@@ -599,7 +600,7 @@ async function _doProcess() {
  document.getElementById('statAmb').textContent = stats.ambulatory;
  document.getElementById('statWC').textContent = stats.wheelchair;
  let bdHtml = '<h3>Files processed</h3>';
- for (const f of fileSummary) bdHtml += `<div class="breakdown-row"><span class="desc">${f.name}</span><span class="count">${f.count} trips</span></div>`;
+ for (const f of fileSummary) bdHtml += `<div class="breakdown-row"><span class="desc">${_esc(f.name)}</span><span class="count">${f.count} trips</span></div>`;
  if (outOfStateTrips.length > 0) {
   bdHtml += `<div class="breakdown-row" style="color:#b8721a"><span class="desc">⚑ Out-of-state trips</span><span class="count">${outOfStateTrips.length}</span></div>`;
   toast(outOfStateTrips.length + ' out-of-state trip' + (outOfStateTrips.length === 1 ? '' : 's') + ' detected: ' + outOfStateTrips.slice(0, 3).join('; ') + (outOfStateTrips.length > 3 ? '...' : ''), 'warning', 8000);

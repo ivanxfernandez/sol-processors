@@ -265,7 +265,7 @@ function renderFileList() {
  pill.className = 'file-pill';
  pill.innerHTML = `
  <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
- <span>${f.name}</span>
+ <span>${_esc(f.name)}</span>
  <button class="remove" onclick="removeFile(${i})">✕</button>`;
  list.appendChild(pill);
  });
@@ -454,7 +454,7 @@ function processFiles() {
  document.getElementById('statWC').textContent = stats.wheelchair;
  let bdHtml = '<h3>Files processed</h3>';
  for (const f of fileSummary) {
- bdHtml += `<div class="breakdown-row"><span class="desc">${f.name}</span><span class="count">${f.count} trips</span></div>`;
+ bdHtml += `<div class="breakdown-row"><span class="desc">${_esc(f.name)}</span><span class="count">${f.count} trips</span></div>`;
  }
  if (stats.stretcher > 0) {
  bdHtml += `<div class="breakdown-row"><span class="desc">Stretcher trips</span><span class="count">${stats.stretcher}</span></div>`;

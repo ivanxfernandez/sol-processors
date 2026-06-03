@@ -357,9 +357,9 @@ function extractTimeFromNotes(notes) {
  if (!/[AP]M|:/i.test(m[1]+m[2])) continue;
  const t = to24h(m[2]); if (t && t.h<=23) return t;
  }
- const ret = text.match(/return\s+(?:pick\s*up\s+(?:from\s+\w+\s+)?at\s+|(?:home\s+)?(?:at\s+)?)(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i);
+ const ret = text.match(/return\s+(?:pick[\s-]*up\s+(?:from\s+\w+\s+)?at\s+|(?:home\s+)?(?:at\s+)?)(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i);
  if (ret) { const t=to24h(ret[1]); if(t) return t; }
- const vr = text.match(/(?:request(?:ing)?\s+to\s+be\s+pick(?:ed)?\s+up|veteran\s+request(?:ing)?(?:\s+to\s+be)?\s+pick(?:ed)?\s+up)\s+(?:at\s+)?(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i);
+ const vr = text.match(/(?:request(?:ing)?\s+to\s+be\s+pick(?:ed)?[\s-]+up|veteran\s+request(?:ing)?(?:\s+to\s+be)?\s+pick(?:ed)?[\s-]+up)\s+(?:at\s+)?(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i);
  if (vr) { const t=to24h(vr[1]); if(t) return t; }
  const ct = text.match(/chair\s+time\s+(?:at\s+|@\s*)(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i);
  if (ct) { const t=to24h(ct[1]); if(t) return t; }
@@ -369,7 +369,7 @@ function extractTimeFromNotes(notes) {
 function extractPrefPickup(notes) {
  if (!notes) return null;
  const text = String(notes);
- const m = text.match(/(?:preferred|specific|requested)\s+pick\s*up(?:\s+time)?\s*(?:at|:|-)?\s*(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i);
+ const m = text.match(/(?:preferred|specific|requested)\s+pick[\s-]*up(?:\s+time)?\s*(?:at|of|:|-)?\s*(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i);
  if (m) { const t = to24h(m[1]); if (t) return t; }
  return null;
 }
@@ -667,45 +667,45 @@ async function processFile() {
   let alertHtml = '';
   if (alerts.modified.length > 0) {
    alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_EDIT}Modified trips — re-upload (${alerts.modified.length})</div>`;
-   alerts.modified.forEach(n => { alertHtml += `<div class="alert-item">${n}</div>`; });
+   alerts.modified.forEach(n => { alertHtml += `<div class="alert-item">${_esc(n)}</div>`; });
    alertHtml += '</div>';
   }
   if (alerts.removed.length > 0) {
    alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_TRASH}Removed from VetRide — cancel in RG (${alerts.removed.length})</div>`;
-   alerts.removed.forEach(n => { alertHtml += `<div class="alert-item">${n}</div>`; });
+   alerts.removed.forEach(n => { alertHtml += `<div class="alert-item">${_esc(n)}</div>`; });
    alertHtml += '</div>';
    toast(alerts.removed.length + ' trip' + (alerts.removed.length === 1 ? '' : 's') + ' removed from VetRide — cancel manually in RG', 'warning', 8000);
   }
   if (alerts.nowCanceled.length > 0) {
    alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_BAN}Canceled in VetRide — cancel in RG (${alerts.nowCanceled.length})</div>`;
-   alerts.nowCanceled.forEach(n => { alertHtml += `<div class="alert-item">${n}</div>`; });
+   alerts.nowCanceled.forEach(n => { alertHtml += `<div class="alert-item">${_esc(n)}</div>`; });
    alertHtml += '</div>';
    toast(alerts.nowCanceled.length + ' trip' + (alerts.nowCanceled.length === 1 ? '' : 's') + ' canceled in VetRide — cancel in RG', 'warning', 8000);
   }
   if (alerts.longDistance.length > 0) {
    alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_DIST}Long-distance trips &gt;100 mi (${alerts.longDistance.length})</div>`;
-   alerts.longDistance.forEach(n => { alertHtml += `<div class="alert-item">${n}</div>`; });
+   alerts.longDistance.forEach(n => { alertHtml += `<div class="alert-item">${_esc(n)}</div>`; });
    alertHtml += '</div>';
    toast(alerts.longDistance.length + ' trip' + (alerts.longDistance.length === 1 ? '' : 's') + ' over 100 mi — see alerts panel', 'warning', 7000);
   }
   if (alerts.outOfState.length > 0) {
    alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_MAP}Out-of-state trips (${alerts.outOfState.length})</div>`;
-   alerts.outOfState.forEach(n => { alertHtml += `<div class="alert-item">${n}</div>`; });
+   alerts.outOfState.forEach(n => { alertHtml += `<div class="alert-item">${_esc(n)}</div>`; });
    alertHtml += '</div>';
   }
   if (alerts.bariatric.length > 0) {
    alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_WARN}Bariatric / Heavy Veterans (${alerts.bariatric.length})</div>`;
-   alerts.bariatric.forEach(n => { alertHtml += `<div class="alert-item">${n}</div>`; });
+   alerts.bariatric.forEach(n => { alertHtml += `<div class="alert-item">${_esc(n)}</div>`; });
    alertHtml += '</div>';
   }
   if (alerts.waitReturn.length > 0) {
    alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_CLOCK}Wait & Return (${alerts.waitReturn.length})</div>`;
-   alerts.waitReturn.forEach(n => { alertHtml += `<div class="alert-item">${n}</div>`; });
+   alerts.waitReturn.forEach(n => { alertHtml += `<div class="alert-item">${_esc(n)}</div>`; });
    alertHtml += '</div>';
   }
   if (alerts.excluded.length > 0) {
    alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_BAN}Excluded from output (${alerts.excluded.length})</div>`;
-   alerts.excluded.forEach(n => { alertHtml += `<div class="alert-item">${n}</div>`; });
+   alerts.excluded.forEach(n => { alertHtml += `<div class="alert-item">${_esc(n)}</div>`; });
    alertHtml += '</div>';
   }
   document.getElementById('alertContent').innerHTML = alertHtml;
