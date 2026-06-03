@@ -252,6 +252,9 @@ function extractTimeFromNotes(notes) {
  if (vr) { const t=to24h(vr[1]); if(t) return t; }
  const ct = text.match(/chair\s+time\s+(?:at\s+|@\s*)(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i);
  if (ct) { const t=to24h(ct[1]); if(t) return t; }
+ // "(patient is) done with dialysis - 11:30AM" / "done at 0930" / "DONE TIME 0820"
+ const done = text.match(/done\s+(?:with\s+[a-z]+\s*)?[-–:]?\s*(?:at\s+|@\s*|time\s+)?(\d{1,2}(?::\d{2})?\s*(?:AM|PM)|\b\d{4}\b)/i);
+ if (done) { const t=to24h(done[1]); if(t) return t; }
  return null;
 }
 
