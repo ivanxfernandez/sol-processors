@@ -28,12 +28,17 @@
 </style>
 </head>
 <body>
-<div class="card">
+<div class="card" id="mainCard">
   <div class="header" style="position:relative">
-    <a href="index.html" style="position:absolute;top:0;right:0;display:flex;align-items:center;gap:6px;font-size:13px;color:var(--accent);text-decoration:none;font-weight:500;padding:6px 12px;border:1.5px solid var(--accent-border);border-radius:8px;background:var(--accent-bg);transition:filter 0.15s" onmouseover="this.style.filter='brightness(0.9)'" onmouseout="this.style.filter=''">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-      All Processors
-    </a>
+    <div style="position:absolute;top:0;right:0;display:flex;align-items:center;gap:8px">
+      <button type="button" title="Schedule Export" onclick="showView('schedule')" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;color:var(--accent);border:1.5px solid var(--accent-border);border-radius:8px;background:var(--accent-bg);cursor:pointer;transition:filter 0.15s" onmouseover="this.style.filter='brightness(0.9)'" onmouseout="this.style.filter=''">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </button>
+      <a href="index.html" style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--accent);text-decoration:none;font-weight:500;padding:6px 12px;border:1.5px solid var(--accent-border);border-radius:8px;background:var(--accent-bg);transition:filter 0.15s" onmouseover="this.style.filter='brightness(0.9)'" onmouseout="this.style.filter=''">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        All Processors
+      </a>
+    </div>
     <div class="logo" style="background:#b8232a"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/></svg></div>
     <div><h1>SDVA Trip Processor</h1></div>
   </div>
@@ -125,6 +130,40 @@
     <button class="btn-reset" onclick="fullReset()">Process another file<span class="kbd-hint">esc</span></button>
   </div>
 </div>
+
+<div class="card" id="scheduleCard" style="display:none">
+  <div class="header" style="position:relative">
+    <div style="position:absolute;top:0;right:0;display:flex;align-items:center;gap:8px">
+      <button type="button" title="Trip Processor" onclick="showView('main')" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;color:var(--accent);border:1.5px solid var(--accent-border);border-radius:8px;background:var(--accent-bg);cursor:pointer;transition:filter 0.15s" onmouseover="this.style.filter='brightness(0.9)'" onmouseout="this.style.filter=''">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/></svg>
+      </button>
+      <a href="index.html" style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--accent);text-decoration:none;font-weight:500;padding:6px 12px;border:1.5px solid var(--accent-border);border-radius:8px;background:var(--accent-bg);transition:filter 0.15s" onmouseover="this.style.filter='brightness(0.9)'" onmouseout="this.style.filter=''">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        All Processors
+      </a>
+    </div>
+    <div class="logo" style="background:#b8232a"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+    <div><h1>Schedule Export</h1><p style="margin:2px 0 0;color:#6b7280;font-size:13px">Turn a Trip Report into the dispatch Schedule sheet</p></div>
+  </div>
+
+  <div class="drop-zone" id="dropReport">
+    <input type="file" id="inputReport" accept=".xlsx,.xls" />
+    <div class="drop-icon"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg></div>
+    <h2>Drop your Trip Report here</h2>
+    <p>or click to browse — .xlsx files only</p>
+  </div>
+  <div class="file-pill" id="pillReport" style="display:none">
+    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg><span id="nameReport"></span>
+    <button class="remove" onclick="clearReport()">✕</button>
+  </div>
+
+  <div class="error-box" id="reportErrorBox"></div>
+
+  <div class="download-group" style="margin-top:10px">
+    <button class="btn-download btn-dl-red" id="btnSchedule" style="display:none"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg> <span id="btnScheduleLabel">Download Schedule</span></button>
+  </div>
+</div>
+
 <script>
 // Stage 2: Folder drag support
 async function getAllFilesFromDrop(items) {
@@ -628,6 +667,145 @@ function _doProcess() {
   }
 }
 
+// ===================================================================
+// Schedule Export  —  Trip Report  ->  single "Schedule" sheet
+// Independent of the manifest flow above (different input file/schema).
+// ===================================================================
+// Toggle between the Trip Processor card and the Schedule Export card (one at a time)
+function showView(v) {
+  document.getElementById('mainCard').style.display     = (v === 'schedule') ? 'none' : '';
+  document.getElementById('scheduleCard').style.display = (v === 'schedule') ? '' : 'none';
+  window.scrollTo(0, 0);
+}
+
+const SCHED_COLS = ['PU TIME','Payer','Mode','Passenger name','PU Address','DO Address','Driver ID','Vehicle ID','Start'];
+const SCHED_SRC  = ['Status','Scheduled PU','Payer','Mode','Passenger name','PU Address','DO Address']; // required report headers
+let scheduleBlob = null, scheduleName = 'Schedule.xlsx';
+
+function showReportError(msg) { const b = document.getElementById('reportErrorBox'); b.textContent = msg; b.classList.add('visible'); }
+function hideReportError() { document.getElementById('reportErrorBox').classList.remove('visible'); }
+
+(function wireReport() {
+  const zone = document.getElementById('dropReport');
+  const input = document.getElementById('inputReport');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) readReport(e.dataTransfer.files[0]); });
+  input.addEventListener('change', e => { if (e.target.files[0]) readReport(e.target.files[0]); });
+})();
+
+function readReport(file) {
+  if (!file.name.match(/\.xlsx?$/i)) { showReportError('Please upload an .xlsx file.'); toast('Please upload an .xlsx file.', 'error'); return; }
+  hideReportError();
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array', raw: true });
+      // Use the sheet with the most rows (the report data sheet)
+      let rows = null;
+      for (const sn of wb.SheetNames) {
+        const r = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: null, raw: true });
+        if (!rows || r.length > rows.length) rows = r;
+      }
+      document.getElementById('nameReport').textContent = file.name;
+      document.getElementById('pillReport').style.display = 'flex';
+      buildSchedule(rows);
+    } catch(err) { showReportError('Could not read file: ' + err.message); toast('Could not read ' + file.name, 'error'); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function clearReport() {
+  scheduleBlob = null; scheduleName = 'Schedule.xlsx';
+  document.getElementById('pillReport').style.display = 'none';
+  document.getElementById('inputReport').value = '';
+  document.getElementById('btnSchedule').style.display = 'none';
+  hideReportError();
+}
+
+// "02:45 AM" -> Excel time fraction (0..1); null if unparseable
+function schedTimeFrac(s) {
+  const m = String(s == null ? '' : s).trim().match(/^(\d{1,2}):(\d{2})\s*([AaPp][Mm])?$/);
+  if (!m) return null;
+  let h = +m[1]; const min = +m[2]; const ap = m[3] ? m[3].toUpperCase() : null;
+  if (ap) { if (ap === 'PM' && h !== 12) h += 12; if (ap === 'AM' && h === 12) h = 0; }
+  if (h > 23 || min > 59) return null;
+  return (h * 3600 + min * 60) / 86400;
+}
+
+// Filename date from the report's Date column -> "MM-DD-YYYY"
+function schedDateFromRows(dataRows, iDate) {
+  if (iDate === undefined) return null;
+  for (const r of dataRows) {
+    const v = r[iDate];
+    if (v == null || v === '') continue;
+    const m = String(v).match(/(\d{1,2})\D(\d{1,2})\D(\d{2,4})/);
+    if (m) { const yy = m[3].length === 2 ? '20' + m[3] : m[3]; return `${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}-${yy}`; }
+  }
+  return null;
+}
+
+function buildSchedule(rows) {
+  hideReportError();
+  scheduleBlob = null;
+  document.getElementById('btnSchedule').style.display = 'none';
+  if (!rows || rows.length < 2) { showReportError('That file has no data rows.'); return; }
+
+  const header = rows[0] || [];
+  const idx = {};
+  header.forEach((h, i) => { if (h != null) idx[String(h).trim()] = i; });
+
+  const missing = SCHED_SRC.filter(c => idx[c] === undefined);
+  if (missing.length) { showReportError('This does not look like a Trip Report — missing column(s): ' + missing.join(', ')); toast('Not a Trip Report file', 'error'); return; }
+
+  const iStatus = idx['Status'], iSched = idx['Scheduled PU'], iPayer = idx['Payer'],
+        iMode = idx['Mode'], iPax = idx['Passenger name'], iPU = idx['PU Address'], iDO = idx['DO Address'];
+
+  const timed = [], willCall = [];
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r] || [];
+    const payer = row[iPayer], pax = row[iPax], pu = row[iPU], doAddr = row[iDO];
+    // skip blank/trailing rows
+    if ([payer, pax, pu, doAddr, row[iStatus], row[iSched]].every(v => v == null || v === '')) continue;
+    const base = [null, payer, row[iMode], pax, pu, doAddr, null, null, null];
+    if (/will\s*call/i.test(String(row[iStatus] || ''))) {
+      base[0] = 'Will Call';
+      willCall.push({ row: base });
+    } else {
+      const f = schedTimeFrac(row[iSched]);
+      base[0] = (f == null) ? (row[iSched] == null ? '' : row[iSched]) : f;
+      timed.push({ row: base, frac: (f == null) ? Infinity : f });
+    }
+  }
+  // Unassigned (timed) first, sorted by pickup time; Will Call rows after, original order
+  timed.sort((a, b) => a.frac - b.frac);
+  const all = [...timed, ...willCall];
+
+  if (!all.length) { showReportError('No trips found in this report.'); return; }
+
+  const aoa = [SCHED_COLS, ...all.map(x => x.row)];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  // Format the PU TIME column (A) so numeric fractions render as times
+  for (let i = 0; i < all.length; i++) {
+    if (typeof all[i].row[0] === 'number') {
+      const cell = ws['A' + (i + 2)];
+      if (cell) { cell.t = 'n'; cell.z = 'h:mm AM/PM'; }
+    }
+  }
+  ws['!cols'] = [{ wch: 10 }, { wch: 26 }, { wch: 12 }, { wch: 22 }, { wch: 42 }, { wch: 42 }, { wch: 10 }, { wch: 10 }, { wch: 8 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Schedule');
+  scheduleBlob = new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array' })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+  const d = schedDateFromRows(rows.slice(1), idx['Date']);
+  scheduleName = d ? `SDVA ${d}.xlsx` : 'SDVA Schedule.xlsx';
+
+  const btn = document.getElementById('btnSchedule');
+  document.getElementById('btnScheduleLabel').textContent = 'Download ' + scheduleName.replace(/\.xlsx$/i, '');
+  btn.style.display = '';
+  btn.onclick = () => triggerDownload(scheduleBlob, scheduleName);
+  toast('Schedule ready — ' + all.length + ' trip' + (all.length === 1 ? '' : 's'), 'success');
+}
 
 </script>
 </body>
