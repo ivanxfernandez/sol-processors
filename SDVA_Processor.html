@@ -678,8 +678,16 @@ const SCHED_HEADER_FILL = 'FF4F81BD';
 const SCHED_PAYER_FILL = {
   '7115 SDVA Wheelchair Veterans': 'FFFFFF00', // yellow
   '7114 SDVA Gurney Veterans':     'FFD9D9D9', // light gray
-  'PACE SOUTH':                    'FFFCD5B5'  // light orange
+  'PACE SOUTH':                    'FFFCD5B5', // light orange
+  'Companion Veterans':            'FF92D050', // green
+  'Private Pay':                   'FFBDD7EE'  // light blue
 };
+// PACE SOUTH (250s) with Stretcher mobility gets a darker (still readable) orange.
+const SCHED_PACE_STRETCHER_FILL = 'FFF4B183';
+function schedFill(payer, mode) {
+  if (payer === 'PACE SOUTH' && /stretcher/i.test(String(mode || ''))) return SCHED_PACE_STRETCHER_FILL;
+  return SCHED_PAYER_FILL[payer] || null;
+}
 // Only these accounts are exported (all others are dropped).
 const SCHED_KEEP_PAYERS = new Set([
   '7114 SDVA Gurney Veterans',      // 7114
@@ -790,13 +798,14 @@ function buildSchedule(rows) {
       if (ef == null || ef < SCHED_EARLY_FROM - 1e-9 || ef > SCHED_EARLY_TO + 1e-9) continue;
     }
     const base = [null, payer, row[iMode], pax, pu, doAddr, null, null, null];
+    const fillColor = schedFill(payer, row[iMode]);
     if (/will\s*call/i.test(String(row[iStatus] || ''))) {
       base[0] = 'Will Call';
-      willCall.push({ row: base, payer: payer });
+      willCall.push({ row: base, fill: fillColor });
     } else {
       const f = schedTimeFrac(row[iSched]);
       base[0] = (f == null) ? (row[iSched] == null ? '' : row[iSched]) : f;
-      timed.push({ row: base, frac: (f == null) ? Infinity : f, payer: payer });
+      timed.push({ row: base, frac: (f == null) ? Infinity : f, fill: fillColor });
     }
   }
   // Unassigned (timed) first, sorted by pickup time; Will Call rows after, original order
@@ -828,7 +837,7 @@ function buildSchedule(rows) {
       if (ws[a]) { ws[a].t = 'n'; ws[a].z = 'h:mm AM/PM'; }
     }
     // Color by account (Payer), columns A–F only
-    const fill = SCHED_PAYER_FILL[all[i].payer];
+    const fill = all[i].fill;
     if (fill) {
       for (let c = 0; c < 6; c++) {
         const a = X.utils.encode_cell({ r: rIdx, c: c });
