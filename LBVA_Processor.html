@@ -13,14 +13,7 @@
 <script src="shared/alerts-search.js"></script>
 <script src="shared/keyboard.js"></script>
 <link rel="stylesheet" href="shared/styles.css">
-<style>
-  :root {
-    --accent: #1b5e3b;
-    --accent-bg: #f0f7f3;
-    --accent-border: #c5dece;
-    --accent-light: #c8e6d4;
-  }
-</style>
+<script src="shared/shell.js"></script>
 </head>
 <body>
 <div class="card">
@@ -30,7 +23,7 @@
       All Processors
     </a>
     <div class="logo" style="background:#1b5e3b"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/></svg></div>
-    <div><h1>LBVA Trip Processor</h1></div>
+    <div><h1>Long Beach VA</h1></div>
   </div>
 
   <div class="mode-tabs">
@@ -109,7 +102,7 @@
   </div>
 
   <div class="alerts" id="alerts">
-    <h3>⚠️ Heads up before you download</h3>
+    <h3>Heads up before you download</h3>
     <input class="alert-search" id="alertSearch" placeholder="Filter by passenger name..." oninput="filterAlerts(this.value)" />
     <div id="alertContent"></div>
   </div>
@@ -751,3 +744,10 @@ async function processFile() {
 </script>
 </body>
 </html>
+<style id="__om-edit-overrides">
+:is(h1,h2,h3,h4,h5,h6,p,li,dt,dd,blockquote,figcaption,label,span,a,em,strong,small,td,th,caption) >.ops-mark { background-color: rgb(161, 212, 95) !important }
+:is(h1,h2,h3,h4,h5,h6,p,li,dt,dd,blockquote,figcaption,label,span,a,em,strong,small,td,th,caption) >.ops-mark { background-color: rgb(196, 212, 95) !important }
+:is(h1,h2,h3,h4,h5,h6,p,li,dt,dd,blockquote,figcaption,label,span,a,em,strong,small,td,th,caption) >.ops-mark { background-color: rgb(210, 212, 95) !important }
+:is(h1,h2,h3,h4,h5,h6,p,li,dt,dd,blockquote,figcaption,label,span,a,em,strong,small,td,th,caption) >.ops-mark { background-color: rgb(255, 228, 0) !important }
+:is(h1,h2,h3,h4,h5,h6,p,li,dt,dd,blockquote,figcaption,label,span,a,em,strong,small,td,th,caption) >.ops-mark { background-color: rgb(255, 213, 0) !important }
+</style>

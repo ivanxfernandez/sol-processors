@@ -13,19 +13,7 @@
 <script src="shared/alerts-search.js"></script>
 <script src="shared/keyboard.js"></script>
 <link rel="stylesheet" href="shared/styles.css">
-<style>
-  :root {
-    --accent: #b8232a;
-    --accent-bg: #fdf0f0;
-    --accent-border: #e8b0b3;
-    --accent-light: #f5c5c7;
-  }
-  /* SDVA-specific download button colors (3 variants) */
-  .download-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
-  .btn-dl-red  { background: #b8232a; }
-  .btn-dl-dark { background: #6b1a1f; }
-  .btn-dl-mid  { background: #8b1e24; }
-</style>
+<script src="shared/shell.js"></script>
 </head>
 <body>
 <div class="card" id="mainCard">
@@ -40,7 +28,7 @@
       </a>
     </div>
     <div class="logo" style="background:#b8232a"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/></svg></div>
-    <div><h1>SDVA Trip Processor</h1></div>
+    <div><h1>San Diego VA</h1></div>
   </div>
 
   <div class="mode-tabs">
@@ -107,7 +95,7 @@
   </div>
 
   <div class="alerts" id="alerts">
-    <h3>⚠️ Heads up before you download</h3>
+    <h3>Heads up before you download</h3>
     <input class="alert-search" id="alertSearch" placeholder="Filter by passenger name..." oninput="filterAlerts(this.value)" />
     <div id="alertContent"></div>
   </div>
