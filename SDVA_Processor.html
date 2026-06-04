@@ -680,6 +680,20 @@ const SCHED_PAYER_FILL = {
   '7114 SDVA Gurney Veterans':     'FFD9D9D9', // light gray
   'PACE SOUTH':                    'FFFCD5B5'  // light orange
 };
+// Only these accounts are exported (all others are dropped).
+const SCHED_KEEP_PAYERS = new Set([
+  '7114 SDVA Gurney Veterans',      // 7114
+  '7115 SDVA Wheelchair Veterans',  // 7115
+  'Companion Veterans',             // 7115c
+  'Sol Transportation',             // 100
+  'PACE SOUTH',                     // 250s
+  'Private Pay'
+]);
+// 250s (PACE SOUTH): keep only early trips with Scheduled PU 02:00–07:00 inclusive,
+// EXCEPT Stretcher-mobility trips, which are kept regardless of time.
+const SCHED_EARLY_PAYER = 'PACE SOUTH';
+const SCHED_EARLY_FROM = 2 / 24;   // 02:00
+const SCHED_EARLY_TO   = 7 / 24;   // 07:00
 const SCHED_SRC  = ['Status','Scheduled PU','Payer','Mode','Passenger name','PU Address','DO Address']; // required report headers
 let scheduleBlob = null, scheduleName = 'Schedule.xlsx';
 
@@ -768,6 +782,13 @@ function buildSchedule(rows) {
     const payer = row[iPayer], pax = row[iPax], pu = row[iPU], doAddr = row[iDO];
     // skip blank/trailing rows
     if ([payer, pax, pu, doAddr, row[iStatus], row[iSched]].every(v => v == null || v === '')) continue;
+    // Keep only the configured accounts; drop everything else
+    if (!SCHED_KEEP_PAYERS.has(payer)) continue;
+    // 250s (PACE SOUTH): early trips 02:00–07:00 only, unless Stretcher mobility
+    if (payer === SCHED_EARLY_PAYER && !/stretcher/i.test(String(row[iMode] || ''))) {
+      const ef = schedTimeFrac(row[iSched]);
+      if (ef == null || ef < SCHED_EARLY_FROM - 1e-9 || ef > SCHED_EARLY_TO + 1e-9) continue;
+    }
     const base = [null, payer, row[iMode], pax, pu, doAddr, null, null, null];
     if (/will\s*call/i.test(String(row[iStatus] || ''))) {
       base[0] = 'Will Call';
