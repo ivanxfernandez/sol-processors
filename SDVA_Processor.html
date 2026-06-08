@@ -673,34 +673,37 @@ function showView(v) {
 }
 
 const SCHED_COLS = ['PU TIME','Payer','Mode','Passenger name','PU Address','DO Address','Driver ID','Vehicle ID','Start'];
-// Output colors (ARGB). Header = blue with white text; each account (Payer) gets its own row fill.
+// Output colors (ARGB). Header = blue with white text; each account gets its own row fill.
 const SCHED_HEADER_FILL = 'FF4F81BD';
-const SCHED_PAYER_FILL = {
-  '7115 SDVA Wheelchair Veterans': 'FFFFFF00', // yellow
-  '7114 SDVA Gurney Veterans':     'FFD9D9D9', // light gray
-  'PACE SOUTH':                    'FFFCD5B5', // light orange
-  'Companion Veterans':            'FF92D050', // green
-  'Private Pay':                   'FFBDD7EE', // light blue
-  'Sol Transportation':            'FFF2F2F2'  // light gray
+// Accounts kept in the export, keyed by canonical id; color per account.
+const SCHED_ACCOUNT_FILL = {
+  '7114':      'FFD9D9D9', // 7114 SDVA Gurney Veterans     — gray
+  '7115':      'FFFFFF00', // 7115 SDVA Wheelchair Veterans — yellow
+  'companion': 'FF92D050', // 7115c (…Companion Veterans)   — green
+  'sol':       'FFF2F2F2', // 100  (Sol Transportation)     — light gray
+  'pace':      'FFFCD5B5', // 250s (PACE SOUTH)             — light orange
+  'private':   'FFBDD7EE'  // Private Pay                   — light blue
 };
 // PACE SOUTH (250s) with Stretcher mobility gets a darker (still readable) orange.
 const SCHED_PACE_STRETCHER_FILL = 'FFF4B183';
-function schedFill(payer, mode) {
-  if (payer === 'PACE SOUTH' && /stretcher/i.test(String(mode || ''))) return SCHED_PACE_STRETCHER_FILL;
-  return SCHED_PAYER_FILL[payer] || null;
+// Recognize an account from the Payer text — tolerant of naming variants
+// (e.g. "Companion Veterans" vs "SDVA Companion Veterans"). null = not exported.
+function schedAccountId(payer) {
+  const p = String(payer == null ? '' : payer);
+  if (/7114/.test(p)) return '7114';
+  if (/7115/.test(p)) return '7115';
+  if (/companion/i.test(p)) return 'companion';
+  if (/sol\s*transp/i.test(p)) return 'sol';
+  if (/pace\s*south/i.test(p)) return 'pace';
+  if (/private\s*pay/i.test(p)) return 'private';
+  return null;
 }
-// Only these accounts are exported (all others are dropped).
-const SCHED_KEEP_PAYERS = new Set([
-  '7114 SDVA Gurney Veterans',      // 7114
-  '7115 SDVA Wheelchair Veterans',  // 7115
-  'Companion Veterans',             // 7115c
-  'Sol Transportation',             // 100
-  'PACE SOUTH',                     // 250s
-  'Private Pay'
-]);
+function schedFill(acctId, mode) {
+  if (acctId === 'pace' && /stretcher/i.test(String(mode || ''))) return SCHED_PACE_STRETCHER_FILL;
+  return SCHED_ACCOUNT_FILL[acctId] || null;
+}
 // 250s (PACE SOUTH): keep only early trips with Scheduled PU 02:00–07:00 inclusive,
 // EXCEPT Stretcher-mobility trips, which are kept regardless of time.
-const SCHED_EARLY_PAYER = 'PACE SOUTH';
 const SCHED_EARLY_FROM = 2 / 24;   // 02:00
 const SCHED_EARLY_TO   = 7 / 24;   // 07:00
 const SCHED_SRC  = ['Status','Scheduled PU','Payer','Mode','Passenger name','PU Address','DO Address']; // required report headers
@@ -792,14 +795,15 @@ function buildSchedule(rows) {
     // skip blank/trailing rows
     if ([payer, pax, pu, doAddr, row[iStatus], row[iSched]].every(v => v == null || v === '')) continue;
     // Keep only the configured accounts; drop everything else
-    if (!SCHED_KEEP_PAYERS.has(payer)) continue;
+    const acctId = schedAccountId(payer);
+    if (!acctId) continue;
     // 250s (PACE SOUTH): early trips 02:00–07:00 only, unless Stretcher mobility
-    if (payer === SCHED_EARLY_PAYER && !/stretcher/i.test(String(row[iMode] || ''))) {
+    if (acctId === 'pace' && !/stretcher/i.test(String(row[iMode] || ''))) {
       const ef = schedTimeFrac(row[iSched]);
       if (ef == null || ef < SCHED_EARLY_FROM - 1e-9 || ef > SCHED_EARLY_TO + 1e-9) continue;
     }
     const base = [null, payer, row[iMode], pax, pu, doAddr, null, null, null];
-    const fillColor = schedFill(payer, row[iMode]);
+    const fillColor = schedFill(acctId, row[iMode]);
     if (/will\s*call/i.test(String(row[iStatus] || ''))) {
       base[0] = 'Will Call';
       willCall.push({ row: base, fill: fillColor });
