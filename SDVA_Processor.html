@@ -851,6 +851,18 @@ function buildSchedule(rows) {
     }
   }
 
+  // Thin black borders on every cell in the grid (header + data, incl. empty cells)
+  const BORDER_SIDE = { style: 'thin', color: { rgb: 'FF000000' } };
+  const BORDER = { top: BORDER_SIDE, bottom: BORDER_SIDE, left: BORDER_SIDE, right: BORDER_SIDE };
+  const range = X.utils.decode_range(ws['!ref']);
+  for (let r = range.s.r; r <= range.e.r; r++) {
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const a = X.utils.encode_cell({ r: r, c: c });
+      if (!ws[a]) ws[a] = { t: 's', v: '' }; // stub empty cells so they get borders too
+      ws[a].s = Object.assign({}, ws[a].s, { border: BORDER });
+    }
+  }
+
   ws['!cols'] = [{ wch: 10 }, { wch: 26 }, { wch: 12 }, { wch: 22 }, { wch: 42 }, { wch: 42 }, { wch: 10 }, { wch: 10 }, { wch: 8 }];
   const wb = X.utils.book_new();
   X.utils.book_append_sheet(wb, ws, 'Schedule');
