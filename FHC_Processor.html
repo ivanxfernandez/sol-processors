@@ -13,6 +13,31 @@
 <script src="shared/keyboard.js"></script>
 <link rel="stylesheet" href="shared/styles.css">
 <script src="shared/shell.js"></script>
+<style>
+  /* Custom date picker (replaces the native <input type="date"> calendar) */
+  .date-field { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; padding:9px 12px; background:var(--field); border:1.5px solid var(--line); border-radius:8px; color:var(--text); font-size:14px; font-family:var(--sans); cursor:pointer; text-align:left; }
+  .date-field:hover { border-color:var(--accent-border); }
+  .date-field.empty #dateText { color:var(--text-faint); }
+  .date-field svg { color:var(--text-faint); flex-shrink:0; }
+  .cal-pop { position:absolute; top:100%; left:0; margin-top:6px; z-index:60; width:262px; background:var(--panel); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 34px rgba(0,0,0,0.22); padding:12px; display:none; }
+  .cal-pop.open { display:block; }
+  .cal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .cal-title { font-weight:700; color:var(--text); font-size:14px; }
+  .cal-navs { display:flex; gap:4px; }
+  .cal-nav { width:28px; height:28px; border:none; background:transparent; color:var(--text-soft); border-radius:6px; cursor:pointer; font-size:18px; line-height:1; display:flex; align-items:center; justify-content:center; }
+  .cal-nav:hover { background:var(--accent-weak); color:var(--accent); }
+  .cal-dow, .cal-days { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+  .cal-dow span { text-align:center; font-size:11px; font-weight:600; color:var(--text-faint); padding:4px 0; }
+  .cal-day { text-align:center; font-size:13px; padding:7px 0; border-radius:6px; cursor:pointer; color:var(--text); border:none; background:transparent; font-family:var(--sans); }
+  .cal-day:hover { background:var(--accent-weak); }
+  .cal-day.muted { color:var(--text-faint); }
+  .cal-day.today { box-shadow:inset 0 0 0 1.5px var(--accent-border); }
+  .cal-day.selected { background:var(--accent); color:var(--accent-contrast); font-weight:700; }
+  .cal-day.selected:hover { background:var(--accent-press); }
+  .cal-foot { display:flex; justify-content:space-between; margin-top:10px; }
+  .cal-link { background:none; border:none; color:var(--accent); font-size:13px; font-weight:600; cursor:pointer; padding:4px 6px; border-radius:6px; }
+  .cal-link:hover { background:var(--accent-weak); }
+</style>
 </head>
 <body>
 <div class="card">
@@ -27,9 +52,28 @@
 
   <div class="section-label">Trip date</div>
   <div style="margin-bottom:1.25rem">
-    <div class="input-group">
+    <div class="input-group" style="position:relative;max-width:220px">
       <label>Date</label>
-      <input type="date" id="tripDate" oninput="updateTZ()" style="max-width:220px"/>
+      <input type="hidden" id="tripDate" />
+      <button type="button" class="date-field empty" id="dateBtn" onclick="toggleCal(event)" aria-haspopup="dialog">
+        <span id="dateText">Select a date</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      </button>
+      <div class="cal-pop" id="calPop" role="dialog" aria-label="Choose date">
+        <div class="cal-head">
+          <span class="cal-title" id="calTitle"></span>
+          <div class="cal-navs">
+            <button type="button" class="cal-nav" onclick="calMove(-1)" aria-label="Previous month">‹</button>
+            <button type="button" class="cal-nav" onclick="calMove(1)" aria-label="Next month">›</button>
+          </div>
+        </div>
+        <div class="cal-dow"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
+        <div class="cal-days" id="calDays"></div>
+        <div class="cal-foot">
+          <button type="button" class="cal-link" onclick="calClear()">Clear</button>
+          <button type="button" class="cal-link" onclick="calToday()">Today</button>
+        </div>
+      </div>
     </div>
     <div id="tzDisplay" style="display:none"></div>
   </div>
@@ -150,6 +194,55 @@ function updateTZ() {
  else tzDisplay.textContent = 'Select a date above';
  checkReady();
 }
+
+// ---- Custom date picker (replaces native <input type="date">) ----
+const CAL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+let calView = new Date();   // first-of-month currently shown
+let calSelected = null;     // selected Date (local) or null
+function _calPad(n) { return String(n).padStart(2, '0'); }
+function calISO(d) { return d.getFullYear() + '-' + _calPad(d.getMonth() + 1) + '-' + _calPad(d.getDate()); }
+function calDisplay(d) { return _calPad(d.getMonth() + 1) + '/' + _calPad(d.getDate()) + '/' + d.getFullYear(); }
+function calSameDay(a, b) { return !!(a && b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()); }
+function setTripDate(d) {
+  const hid = document.getElementById('tripDate'), txt = document.getElementById('dateText'), btn = document.getElementById('dateBtn');
+  if (d) {
+    calSelected = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    hid.value = calISO(calSelected); txt.textContent = calDisplay(calSelected); btn.classList.remove('empty');
+  } else {
+    calSelected = null; hid.value = ''; txt.textContent = 'Select a date'; btn.classList.add('empty');
+  }
+  updateTZ(); // keeps timezone display + checkReady() in sync
+}
+function renderCal() {
+  const y = calView.getFullYear(), m = calView.getMonth(), today = new Date();
+  document.getElementById('calTitle').textContent = CAL_MONTHS[m] + ' ' + y;
+  const start = new Date(y, m, 1 - new Date(y, m, 1).getDay());
+  const days = document.getElementById('calDays'); days.innerHTML = '';
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'cal-day'; b.textContent = d.getDate();
+    if (d.getMonth() !== m) b.classList.add('muted');
+    if (calSameDay(d, today)) b.classList.add('today');
+    if (calSameDay(d, calSelected)) b.classList.add('selected');
+    b.onclick = () => { setTripDate(d); closeCal(); };
+    days.appendChild(b);
+  }
+}
+function openCal() {
+  calView = calSelected ? new Date(calSelected.getFullYear(), calSelected.getMonth(), 1) : new Date();
+  renderCal();
+  document.getElementById('calPop').classList.add('open');
+}
+function closeCal() { document.getElementById('calPop').classList.remove('open'); }
+function toggleCal(e) { if (e) e.stopPropagation(); const p = document.getElementById('calPop'); p.classList.contains('open') ? closeCal() : openCal(); }
+function calMove(delta) { calView = new Date(calView.getFullYear(), calView.getMonth() + delta, 1); renderCal(); }
+function calToday() { setTripDate(new Date()); closeCal(); }
+function calClear() { setTripDate(null); closeCal(); }
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('dateBtn').closest('.input-group');
+  if (wrap && !wrap.contains(e.target)) closeCal();
+});
 function formatDateTime(dateStr, timeVal, tz) {
  const d = new Date(dateStr + 'T00:00:00');
  const dayName = DAY_NAMES[d.getUTCDay()];
@@ -271,7 +364,7 @@ function fullReset() {
  document.getElementById('results').classList.remove('visible');
  document.getElementById('progressWrap').classList.remove('visible');
  const pw = document.getElementById('previewWrap'); if (pw) pw.classList.remove('visible');
- document.getElementById('tripDate').value = '';
+ setTripDate(null);
  document.getElementById('tzDisplay').textContent = 'Select a date above';
  hideError();
  checkReady();
@@ -471,10 +564,8 @@ function processFiles() {
  }, 50);
 }
 updateMemberCount();
-const today = new Date();
-const todayStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
-document.getElementById('tripDate').value = todayStr;
-updateTZ();
+const _defaultDate = new Date(); _defaultDate.setDate(_defaultDate.getDate() + 1); // default to tomorrow
+setTripDate(_defaultDate);
 checkReady();
 
 </script>
