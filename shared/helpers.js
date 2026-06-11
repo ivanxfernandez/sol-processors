@@ -52,30 +52,17 @@ function to24h(str) {
   return null;
 }
 
-/* Trigger a browser download. Uses File System Access API where available
-   (Chrome/Edge desktop) so the user gets a save-as dialog; falls back to
-   anchor.download for Safari/Firefox. AbortError = user closed dialog → no-op. */
+/* Trigger a browser download. Hard-coded to a plain anchor.download with the
+   given filename — no File System Access API / native save-as dialog. Saves
+   straight to the browser's default download location. */
 async function triggerDownload(blob, suggestedName) {
-  if (window.showSaveFilePicker) {
-    try {
-      const handle = await window.showSaveFilePicker({
-        suggestedName,
-        types: [{
-          description: 'Excel File',
-          accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] }
-        }]
-      });
-      const writable = await handle.createWritable();
-      await writable.write(blob);
-      await writable.close();
-      return;
-    } catch (e) { if (e.name === 'AbortError') return; }
-  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = suggestedName;
+  document.body.appendChild(a);
   a.click();
+  a.remove();
   URL.revokeObjectURL(url);
 }
 

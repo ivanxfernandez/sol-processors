@@ -179,10 +179,7 @@ async function getAllFilesFromDrop(items) {
 }
 
 if (typeof XLSX === 'undefined') {
- var s = document.createElement('script');
- s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
- document.head.appendChild(s);
- s.onload = function() { console.log('XLSX loaded from CDN fallback'); };
+  console.error('XLSX failed to load from vendor/xlsx.full.min.js');
 }
 
 const OUT_COLS = [
