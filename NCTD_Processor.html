@@ -163,10 +163,8 @@ function formatDateTime(dateStr, timeVal, tz) {
  return `${dayName}, ${dd} ${mon} ${yyyy} ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00 ${tz}`;
 }
 function normalizeMobility(raw) {
- if (!raw) return 'Wheelchair';
- const s = String(raw).trim().toUpperCase();
- if (s === 'AM' || s.startsWith('AM') || s.includes('AMBI') || s.includes('AMBULATORY')) return 'Ambulatory';
- return 'Wheelchair';
+ // Only an exact "AM" code is Ambulatory; every other value is Wheelchair.
+ return String(raw == null ? '' : raw).trim().toUpperCase() === 'AM' ? 'Ambulatory' : 'Wheelchair';
 }
 function formatName(raw) {
  if (!raw) return '';
