@@ -320,7 +320,9 @@ function parseRows(rows, filename) {
  dateCol=0; nameCol=1; puTimeCol=2; puAddrCol=3; puCityCol=4; puZipCol=5;
  doAddrCol=6; doCityCol=7; doZipCol=8; place1Col=10; place2Col=11;
  mobilityCol=13; notesCol=16;
- } else if (col1IsNum && col2IsDate) {
+ } else if (col2IsDate && col0IsName) {
+ // SOL with-date layout: name(0) | memberId(1, may be blank) | date(2) | time(3) | ...
+ // Keyed on name + date so it still matches when the member-ID column is empty.
  nameCol=0; dateCol=2; puTimeCol=3; puAddrCol=4; puCityCol=5; puZipCol=6;
  doAddrCol=7; doCityCol=8; doZipCol=9; place1Col=13; place2Col=14;
  mobilityCol=16; notesCol=19;
