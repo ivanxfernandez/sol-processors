@@ -468,10 +468,10 @@ function setIncomingPickup(r, apptVal, notes, distVal, earliestI, apptI, notesI)
   let totalMins = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]);
   let offset;
   if (!isNaN(distVal)) {
-    if (distVal > 200)       offset = 240;  //  >200 mi → 4 hr
-    else if (distVal >= 140) offset = 210;  // 140–200 → 3.5 hr
-    else if (distVal >= 100) offset = 180;  // 100–140 → 3 hr
-    else if (distVal >= 70)  offset = 150;  //  70–100 → 2.5 hr
+    if (distVal > 200)       offset = 120;  //  >200 mi → 4 hr
+    else if (distVal >= 140) offset = 120;  // 140–200 → 3.5 hr
+    else if (distVal >= 100) offset = 120;  // 100–140 → 3 hr
+    else if (distVal >= 70)  offset = 120;  //  70–100 → 2.5 hr
     else if (distVal > 25)   offset = 120;  //  25–70  → 2 hr
     else                     offset = 120;   //   ≤25   → 2 hr
   } else offset = 120;                       // unknown → 2 hr
