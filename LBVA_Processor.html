@@ -632,7 +632,7 @@ async function processFile() {
      else if (distVal >= 100) offset = 180;  // 100–140 → 3 hr
      else if (distVal >= 70)  offset = 150;  //  70–100 → 2.5 hr
      else if (distVal > 25)   offset = 120;  //  25–70  → 2 hr
-     else                     offset = 60;   //   ≤25   → 1 hr
+     else                     offset = 90;   //   ≤25   → 1.5 hr
     } else {
      offset = 120; // unknown distance fallback (2 hr)
     }
