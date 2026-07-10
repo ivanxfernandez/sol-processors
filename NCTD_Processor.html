@@ -8,14 +8,14 @@
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NCTD Trip Processor</title>
-<script src="vendor/xlsx.full.min.js?v=20260706101808"></script>
-<script src="shared/helpers.js?v=20260706101808"></script>
-<script src="shared/toast.js?v=20260706101808"></script>
-<script src="shared/preview.js?v=20260706101808"></script>
-<script src="shared/alerts-search.js?v=20260706101808"></script>
-<script src="shared/keyboard.js?v=20260706101808"></script>
-<link rel="stylesheet" href="shared/styles.css?v=20260706101808">
-<script src="shared/shell.js?v=20260706101808"></script>
+<script src="vendor/xlsx.full.min.js?v=20260710103956"></script>
+<script src="shared/helpers.js?v=20260710103956"></script>
+<script src="shared/toast.js?v=20260710103956"></script>
+<script src="shared/preview.js?v=20260710103956"></script>
+<script src="shared/alerts-search.js?v=20260710103956"></script>
+<script src="shared/keyboard.js?v=20260710103956"></script>
+<link rel="stylesheet" href="shared/styles.css?v=20260710103956">
+<script src="shared/shell.js?v=20260710103956"></script>
 </head>
 <body>
 <div class="card">
@@ -464,11 +464,20 @@ function handleFiles(fileList) {
  reader.onload = e => {
  try {
  const wb = XLSX.read(e.target.result, { type: 'array', raw: true });
+ const sheets = wb.SheetNames.map(sn => XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: null, raw: true }));
+ const fnDate = extractDateFromFilename(file.name);
  let rows = [];
- for (const sn of wb.SheetNames) {
- const candidate = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: null, raw: true });
- if (candidate.length > rows.length) rows = candidate;
+ // When a file has multiple sheets (e.g. today + tomorrow), prefer the sheet whose
+ // dates match the filename date; otherwise fall back to the sheet with the most rows.
+ if (fnDate) {
+ let bestMatches = 0;
+ for (const cand of sheets) {
+ let matches = 0;
+ for (const row of cand) { if (!row) continue; for (const v of row) { if (v != null && extractDateStr(v) === fnDate) matches++; } }
+ if (matches > bestMatches) { bestMatches = matches; rows = cand; }
  }
+ }
+ if (!rows.length) { for (const cand of sheets) { if (cand.length > rows.length) rows = cand; } }
  loadedFiles.push({ name: file.name, rows });
  renderFileList();
  toast('Loaded ' + file.name, 'success');

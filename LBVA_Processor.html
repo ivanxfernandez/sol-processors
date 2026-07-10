@@ -8,15 +8,15 @@
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LBVA Trip Processor</title>
-<script src="vendor/xlsx.full.min.js?v=20260706101808"></script>
-<script src="shared/helpers.js?v=20260706101808"></script>
-<script src="shared/toast.js?v=20260706101808"></script>
-<script src="shared/preview.js?v=20260706101808"></script>
-<script src="shared/diff.js?v=20260706101808"></script>
-<script src="shared/alerts-search.js?v=20260706101808"></script>
-<script src="shared/keyboard.js?v=20260706101808"></script>
-<link rel="stylesheet" href="shared/styles.css?v=20260706101808">
-<script src="shared/shell.js?v=20260706101808"></script>
+<script src="vendor/xlsx.full.min.js?v=20260710103956"></script>
+<script src="shared/helpers.js?v=20260710103956"></script>
+<script src="shared/toast.js?v=20260710103956"></script>
+<script src="shared/preview.js?v=20260710103956"></script>
+<script src="shared/diff.js?v=20260710103956"></script>
+<script src="shared/alerts-search.js?v=20260710103956"></script>
+<script src="shared/keyboard.js?v=20260710103956"></script>
+<link rel="stylesheet" href="shared/styles.css?v=20260710103956">
+<script src="shared/shell.js?v=20260710103956"></script>
 </head>
 <body>
 <div class="card">
@@ -625,7 +625,7 @@ async function processFile() {
     // Distance tiers (apply to ALL Incoming trips regardless of destination, incl. LBVA-bound).
     // At every tier boundary the higher tier wins (e.g. 100.0 mi → 3hr, 70.0 mi → 2.5hr, 140.0 mi → 3.5hr).
     // Exception: "25 and under" is fully inclusive → 25.0 mi in this tier, 25.1 mi = next tier.
-    // Within ≤25 mi, dialysis veterans keep a 1 hr lead; everyone else is 1.5 hr.
+    // Within ≤25 mi: dialysis NOT going to the VA → 1 hr; everyone else → 2 hr.
     // Veteran overrides + preferred-pickup notes already short-circuited above this block.
     if (!isNaN(distVal)) {
      if (distVal > 200)      offset = 240;  //  >200 mi → 4 hr (also flagged via long-distance alert in main loop)
@@ -633,7 +633,7 @@ async function processFile() {
      else if (distVal >= 100) offset = 180;  // 100–140 → 3 hr
      else if (distVal >= 70)  offset = 150;  //  70–100 → 2.5 hr
      else if (distVal > 25)   offset = 120;  //  25–70  → 2 hr
-     else                     offset = isDialysisTrip(notes, doAddrInc) ? 60 : 90;  // ≤25: dialysis → 1 hr, else 1.5 hr
+     else                     offset = (isDialysisTrip(notes, doAddrInc) && !isVALongBeachDropoff(notes, doAddrInc)) ? 60 : 120;  // ≤25: dialysis not to VA → 1 hr; everyone else → 2 hr
     } else {
      offset = 120; // unknown distance fallback (2 hr)
     }
