@@ -303,11 +303,18 @@ function parseRows(rows, filename) {
  let nameCol, dateCol, puTimeCol, puAddrCol, puCityCol, puZipCol,
  doAddrCol, doCityCol, doZipCol, mobilityCol, notesCol, place1Col, place2Col;
  let idCol = -1; // NCTD Client ID column; -1 when the layout has none
+ // Client IDs run from 2 to 5 digits and the first rider's can be small or blank, so the
+ // ID column is recognized from the first rows together, not from the size of row 0's ID.
+ const sample = rows.filter(r => r && r.some(v => v !== null && v !== undefined && v !== '')).slice(0, 25);
+ const idLike = v => cleanClientId(v) !== null && !isTimeVal(v);
  const col0IsDate = isDateVal(r0[0]);
- const col1IsNum = typeof r0[1] === 'number' && r0[1] > 1000 && r0[1] < 999999 && !isDateVal(r0[1]);
+ // A date column repeats one trip date down the file; an ID column changes per rider.
+ const col1Vals = sample.map(r => r[1]).filter(v => v !== null && v !== undefined && v !== '');
+ const col1IsOneDate = col1Vals.length > 0 && col1Vals.every(isDateVal) && new Set(col1Vals.map(String)).size <= 2;
+ const col1IsNum = !col1IsOneDate && col1Vals.some(idLike);
  const col2IsDate = isDateVal(r0[2]);
- // Format D: date(0), name(1), member_id(2>60000), pu_time(3) - new SOL format
- const col2IsMemberId = typeof r0[2] === 'number' && r0[2] > 60000;
+ // Format D: date(0), name(1), member_id(2), pu_time(3) - new SOL format
+ const col2IsMemberId = sample.some(r => idLike(r[2]) && isTimeVal(r[3]));
  // Format E (SOL no-date): name(0) | memberId(1) | timeFraction(2) | addresses 3-8
  // — no date column at all. Date is sourced from the filename ("SOL M.D.YY.xlsx").
  const col0IsName = typeof r0[0] === 'string' && /[A-Za-z]/.test(r0[0]) && !isDateVal(r0[0]);
