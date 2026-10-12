@@ -8,14 +8,14 @@
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NCTD Trip Processor</title>
-<script src="vendor/xlsx.full.min.js?v=20260903081958"></script>
-<script src="shared/helpers.js?v=20260903081958"></script>
-<script src="shared/toast.js?v=20260903081958"></script>
-<script src="shared/preview.js?v=20260903081958"></script>
-<script src="shared/alerts-search.js?v=20260903081958"></script>
-<script src="shared/keyboard.js?v=20260903081958"></script>
-<link rel="stylesheet" href="shared/styles.css?v=20260903081958">
-<script src="shared/shell.js?v=20260903081958"></script>
+<script src="vendor/xlsx.full.min.js?v=20261011231613"></script>
+<script src="shared/helpers.js?v=20261011231613"></script>
+<script src="shared/toast.js?v=20261011231613"></script>
+<script src="shared/preview.js?v=20261011231613"></script>
+<script src="shared/alerts-search.js?v=20261011231613"></script>
+<script src="shared/keyboard.js?v=20261011231613"></script>
+<link rel="stylesheet" href="shared/styles.css?v=20261011231613">
+<script src="shared/shell.js?v=20261011231613"></script>
 </head>
 <body>
 <div class="card">
@@ -102,8 +102,6 @@ const OUT_COLS = [
 const DAY_NAMES = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
 const MON_NAMES = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
 const _usedTripIds = new Set();
-const _sessionMembers = {};
-const _usedMemberIds = new Set();
 function genTripId() {
  let id;
  do { id = 'NCTD' + String(Math.floor(Math.random() * 10000)).padStart(4, '0'); }
@@ -111,15 +109,9 @@ function genTripId() {
  _usedTripIds.add(id);
  return id;
 }
+// Same participant → same member ID on every run (see stableMemberId in shared/helpers.js).
 function getMemberId(name) {
- const key = String(name).trim().toUpperCase();
- if (_sessionMembers[key]) return _sessionMembers[key];
- let id;
- do { id = 'NCTD' + String(Math.floor(Math.random() * 100000)).padStart(5, '0'); }
- while (_usedMemberIds.has(id));
- _usedMemberIds.add(id);
- _sessionMembers[key] = id;
- return id;
+ return stableMemberId('NCTD', name);
 }
 function getCaliforniaTZ(dateStr) {
  const d = new Date(dateStr + 'T12:00:00');

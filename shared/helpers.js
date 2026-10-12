@@ -52,6 +52,31 @@ function to24h(str) {
   return null;
 }
 
+/* Stable passenger member ID: prefix + 8 base-36 chars hashed from the name, so a
+   participant gets the same ID on every run and every computer with nothing stored
+   (random IDs gave RouteGenie nothing to match on, and it kept creating duplicate
+   profiles). Case, accents, punctuation and word order are ignored: "Adam Montgomery",
+   "MONTGOMERY ADAM" and "Montgomery, Adam" share one ID. */
+function memberKey(passengerName) {
+  const raw = String(passengerName).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+  const key = raw.replace(/[^A-Z]+/g, ' ').trim().split(' ').sort().join(' ');
+  return key || raw.trim();
+}
+function stableMemberId(prefix, passengerName) {
+  const key = memberKey(passengerName);
+  // cyrb53 string hash
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < key.length; i++) {
+    const ch = key.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  const n = 4294967296 * (2097151 & h2) + (h1 >>> 0);
+  return prefix + n.toString(36).toUpperCase().padStart(11, '0').slice(-8);
+}
+
 /* Trigger a browser download. Hard-coded to a plain anchor.download with the
    given filename — no File System Access API / native save-as dialog. Saves
    straight to the browser's default download location. */
