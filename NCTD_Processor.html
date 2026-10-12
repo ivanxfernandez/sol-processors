@@ -109,9 +109,17 @@ function genTripId() {
  _usedTripIds.add(id);
  return id;
 }
-// Same participant → same member ID on every run (see stableMemberId in shared/helpers.js).
-function getMemberId(name) {
- return stableMemberId('NCTD', name);
+// NCTD's own Client ID from the trip list, or null when the cell is blank or not an ID.
+function cleanClientId(v) {
+ if (v === null || v === undefined) return null;
+ const s = String(v).trim().replace(/\.0+$/, '');
+ return /^\d{1,7}$/.test(s) && Number(s) > 0 ? String(Number(s)) : null;
+}
+// Member ID = NCTD's Client ID when the list has one (it survives name typos); otherwise
+// the name-based ID from shared/helpers.js. The "C" keeps a Client ID from landing on one
+// of the old random "NCTD" + digits IDs that RouteGenie still holds for other riders.
+function getMemberId(name, clientId) {
+ return clientId ? 'NCTDC' + clientId : stableMemberId('NCTD', name);
 }
 function getCaliforniaTZ(dateStr) {
  const d = new Date(dateStr + 'T12:00:00');
@@ -294,6 +302,7 @@ function parseRows(rows, filename) {
  const r0 = rows[0];
  let nameCol, dateCol, puTimeCol, puAddrCol, puCityCol, puZipCol,
  doAddrCol, doCityCol, doZipCol, mobilityCol, notesCol, place1Col, place2Col;
+ let idCol = -1; // NCTD Client ID column; -1 when the layout has none
  const col0IsDate = isDateVal(r0[0]);
  const col1IsNum = typeof r0[1] === 'number' && r0[1] > 1000 && r0[1] < 999999 && !isDateVal(r0[1]);
  const col2IsDate = isDateVal(r0[2]);
@@ -305,7 +314,7 @@ function parseRows(rows, filename) {
  const col2IsTimeFraction = typeof r0[2] === 'number' && r0[2] > 0 && r0[2] < 1;
  let isSolNoDate = false;
  if (col0IsDate && col2IsMemberId) {
- dateCol=0; nameCol=1; puTimeCol=3; puAddrCol=4; puCityCol=5; puZipCol=6;
+ dateCol=0; nameCol=1; idCol=2; puTimeCol=3; puAddrCol=4; puCityCol=5; puZipCol=6;
  doAddrCol=7; doCityCol=8; doZipCol=9; place1Col=11; place2Col=12;
  mobilityCol=14; notesCol=17;
  } else if (col0IsDate) {
@@ -315,13 +324,13 @@ function parseRows(rows, filename) {
  } else if (col2IsDate && col0IsName) {
  // SOL with-date layout: name(0) | memberId(1, may be blank) | date(2) | time(3) | ...
  // Keyed on name + date so it still matches when the member-ID column is empty.
- nameCol=0; dateCol=2; puTimeCol=3; puAddrCol=4; puCityCol=5; puZipCol=6;
+ nameCol=0; idCol=1; dateCol=2; puTimeCol=3; puAddrCol=4; puCityCol=5; puZipCol=6;
  doAddrCol=7; doCityCol=8; doZipCol=9; place1Col=13; place2Col=14;
  mobilityCol=16; notesCol=19;
  } else if (col0IsName && col1IsNum && col2IsTimeFraction) {
  // SOL no-date layout: name | memberId | timeFraction | puAddr | puCity | puZip | doAddr | doCity | doZip | dist | place1 | place2 | CLI | mobility | ...
  isSolNoDate = true;
- nameCol=0; dateCol=-1; puTimeCol=2;
+ nameCol=0; idCol=1; dateCol=-1; puTimeCol=2;
  puAddrCol=3; puCityCol=4; puZipCol=5;
  doAddrCol=6; doCityCol=7; doZipCol=8;
  place1Col=10; place2Col=11;
@@ -347,6 +356,7 @@ function parseRows(rows, filename) {
  const notes = notesCol !== undefined ? row[notesCol] : null;
  const trip = {
  name: formatName(name),
+ clientId: idCol >= 0 ? cleanClientId(row[idCol]) : null,
  dateStr,
  puTime,
  puAddr,
@@ -396,6 +406,7 @@ function parseHeaderRows(rows) {
  return -1;
  }
  const nameCol = fc('client', 'passenger', 'name');
+ const idCol = headers.findIndex(h => /^(client|member|passenger)\s*id$/.test(h));
  const dateCol = fc('date');
  const puTimeCol = fc('pu time', 'pickup time', 'time');
  const puAddrCol = fc('pu address', 'pickup address', 'pu addr');
@@ -419,6 +430,7 @@ function parseHeaderRows(rows) {
  if (doCityCol >= 0 || doZipCol >= 0) doAddr = buildAddr(row[doAddrCol], row[doCityCol], row[doZipCol]);
  trips.push({
  name: formatName(name),
+ clientId: idCol >= 0 ? cleanClientId(row[idCol]) : null,
  dateStr,
  puTime: puTimeCol >= 0 ? row[puTimeCol] : null,
  puAddr,
@@ -544,10 +556,16 @@ async function _doProcess() {
  setProgress(75, 'Building output...');
  const outputRows = [];
  const outOfStateTrips = [];
+ // A rider whose Client ID is blank on one row still gets it from their other rows.
+ const idByName = {};
+ for (const trip of allTrips) if (trip.name && trip.clientId) idByName[memberKey(trip.name)] = trip.clientId;
+ const noClientId = new Set();
  for (const trip of allTrips) {
  if (!trip.name) continue;
  const tz = getCaliforniaTZ(trip.dateStr);
- const memberId = getMemberId(trip.name);
+ const clientId = trip.clientId || idByName[memberKey(trip.name)] || null;
+ if (!clientId) noClientId.add(trip.name);
+ const memberId = getMemberId(trip.name, clientId);
  const tripId = genTripId();
  const mobility = normalizeMobility(trip.mobility);
  const edt = formatDateTime(trip.dateStr, trip.puTime, tz);
@@ -601,6 +619,11 @@ async function _doProcess() {
  if (outOfStateTrips.length > 0) {
   bdHtml += `<div class="breakdown-row" style="color:#b8721a"><span class="desc">⚑ Out-of-state trips</span><span class="count">${outOfStateTrips.length}</span></div>`;
   toast(outOfStateTrips.length + ' out-of-state trip' + (outOfStateTrips.length === 1 ? '' : 's') + ' detected: ' + outOfStateTrips.slice(0, 3).join('; ') + (outOfStateTrips.length > 3 ? '...' : ''), 'warning', 8000);
+ }
+ if (noClientId.size > 0) {
+  const names = [...noClientId];
+  bdHtml += `<div class="breakdown-row" style="color:#b8721a"><span class="desc">⚑ Riders with no NCTD Client ID (name-based ID used)</span><span class="count">${names.length}</span></div>`;
+  toast(names.length + ' rider' + (names.length === 1 ? '' : 's') + ' with no NCTD Client ID — name-based member ID used: ' + names.slice(0, 3).join('; ') + (names.length > 3 ? '...' : ''), 'warning', 8000);
  }
  document.getElementById('breakdown').innerHTML = bdHtml;
  document.getElementById('downloadBtn').onclick = () => triggerDownload(blob, outName);
