@@ -423,12 +423,53 @@ function extractTimeFromNotes(notes) {
   if (pu) { const t = to24h(pu[1]); if (t) return t; }
   return null;
 }
-// Incoming trips — staff-specified pickup-from-home time.
+// Staff-specified pickup time in the notes: "preferred / specific / requested pick up <time>"
+// (AM/PM or 24-hour, e.g. "Preferred pick up time: 0830").
 function extractPrefPickup(notes) {
   if (!notes) return null;
-  const m = String(notes).match(/(?:preferred|specific|requested)\s+pick[\s-]*up(?:\s+time)?\s*(?:at|of|:|-)?\s*(\d{1,2}(?::\d{2})?\s*(?:AM|PM))/i);
+  // (a bare 4-digit number followed by a street name, e.g. "1234 Elm St", is an address, not a time)
+  const m = String(notes).match(/(?:preferred|specific|requested)\s+pick[\s-]*up(?:\s+time)?\s*(?:is\s+)?(?:at|of|:|-|@)?\s*(\d{1,2}:\d{2}\s*(?:AM|PM)?|\d{1,2}\s*(?:AM|PM)|\b\d{4}\b(?!\s+[\w.]+\s+(?:st|street|ave|avenue|rd|road|dr|drive|blvd|way|ln|lane|ct|court|pl|place|pkwy|hwy)\b))/i);
   if (m) { const t = to24h(m[1]); if (t) return t; }
   return null;
+}
+// Preferred pickup for any trip: the manifest's "Preferred Pickup Date/Time" column first,
+// then a preferred-pickup note. Returns a manifest datetime string (date + timezone taken
+// from refCell when the value carries only a time), or null when there is none.
+// Incoming and Return legs often share the same VA Notes, so on a Return a note time earlier
+// than the appointment is the incoming leg's pickup and is ignored (the column always counts).
+function prefPickupCell(r, idx, notes, refCell, isReturn, apptVal) {
+  const prefHdr = Object.keys(idx).find(h => /preferred\s*pick[\s-]*up/i.test(h));
+  const pi = prefHdr !== undefined ? idx[prefHdr] : undefined;
+  const v = pi !== undefined ? r[pi] : null;
+  if (v != null && String(v).trim() !== '') {
+    const s = String(v).trim();
+    if (/^\w+, \d+ \w+ \d+ \d+:\d+:\d+ [+-]\d{4}$/.test(s)) return s; // same format as the other manifest times
+    let t = null;
+    if (typeof v === 'number') { // Excel date/time serial
+      const mins = Math.round((v % 1) * 1440) % 1440;
+      t = { h: Math.floor(mins / 60), m: mins % 60 };
+    } else {
+      const m = s.match(/(\d{1,2}:\d{2})(?::\d{2})?\s*([AP]M)?\s*(?:[+-]\d{4})?$|(\d{1,2}\s*[AP]M)$|\b(\d{4})$/i);
+      if (m) t = to24h(m[1] ? m[1] + (m[2] || '') : (m[3] || m[4]));
+    }
+    if (t) { const c = formatTimeIntoCell(refCell, t); if (c) return c; }
+  }
+  const nt = extractPrefPickup(notes);
+  if (!nt) return null;
+  if (isReturn) {
+    const am = String(apptVal || '').match(/\s(\d{1,2}):(\d{2}):\d{2}\s[+-]\d{4}$/);
+    if (am && nt.h * 60 + nt.m < parseInt(am[1]) * 60 + parseInt(am[2])) return null;
+  }
+  return formatTimeIntoCell(refCell, nt);
+}
+// Append "Appt: HH:MM" (the original appointment time) to the VA Notes.
+function noteApptTime(r, apptVal, notesI) {
+  if (notesI === undefined || !apptVal) return;
+  const tm = String(apptVal).match(/\s(\d{1,2}):(\d{2}):\d{2}\s[+-]\d{4}$/);
+  if (!tm) return;
+  const ex = r[notesI] ? String(r[notesI]).trim() : '';
+  const add = 'Appt: ' + tm[1].padStart(2, '0') + ':' + tm[2];
+  r[notesI] = ex ? ex + ' | ' + add : add;
 }
 // Replace the time-of-day in a manifest datetime cell, keeping its date + timezone.
 function formatTimeIntoCell(apptVal, t) {
@@ -450,21 +491,15 @@ function isNextDayReturn(realDepart, apptVal) {
   const a = dayKeyFromCell(realDepart), b = dayKeyFromCell(apptVal);
   return a != null && b != null && a > b;
 }
-// Incoming: Earliest Departure = Appointment − distance-tier lead time (or a preferred-pickup note).
+// Incoming: Earliest Departure = Appointment − distance-tier lead time.
+// (A preferred pickup is handled before this in the main loop and wins over it.)
 function setIncomingPickup(r, apptVal, notes, distVal, doAddr, earliestI, apptI, notesI) {
   const apptStr = String(apptVal);
   const timeMatch = apptStr.match(/(\d+):(\d+):(\d+)/);
   const tzMatch = apptStr.match(/([+-]\d{4})$/);
   const dayMatch = apptStr.match(/^(\w+, \d+ \w+ \d+)/);
   if (!(timeMatch && tzMatch && dayMatch)) return;
-  const apptTimeOnly = timeMatch[1].padStart(2,'0') + ':' + timeMatch[2];
-  const noteAppt = () => { if (notesI === undefined) return; const ex = r[notesI] ? String(r[notesI]).trim() : ''; r[notesI] = ex ? ex + ' | Appt: ' + apptTimeOnly : 'Appt: ' + apptTimeOnly; };
-  const prefPU = extractPrefPickup(notes);
-  if (prefPU) {
-    const nv = formatTimeIntoCell(apptVal, prefPU);
-    if (nv && earliestI !== undefined) { r[earliestI] = nv; noteAppt(); if (apptI !== undefined) r[apptI] = null; }
-    return;
-  }
+  const noteAppt = () => noteApptTime(r, apptVal, notesI);
   let totalMins = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]);
   let offset;
   if (!isNaN(distVal)) {
@@ -559,7 +594,7 @@ function _doProcess() {
     setProgress(40, 'Processing trips...');
 
     const rows7114 = [], rows7115 = [], rows7115c = [];
-    const stats = { total: 0, willCall: 0, stretcher: 0, medComp: 0, wheelchair: 0, modified: 0 };
+    const stats = { total: 0, willCall: 0, prefPU: 0, stretcher: 0, medComp: 0, wheelchair: 0, modified: 0 };
     const alerts = { bariatric: [], waitReturn: [], outOfState: [], longDistance: [], modified: [], removed: [], nowCanceled: [] };
     // Populate diff-derived alerts
     if (diffResult) {
@@ -610,8 +645,15 @@ function _doProcess() {
       // Will-calls are detected using the manifest's Estimated Pickup Time (unchanged).
       if (apptI !== undefined) r[apptI] = null;
       if (estPUI !== undefined && r[estPUI]) r[earliestI] = r[estPUI];
-      const willCall = isWillCall(r, idx);
-      if (willCall) {
+      // A preferred pickup (manifest column or note) wins over the appointment time,
+      // the distance lead time and will-call, on Incoming and Return trips alike.
+      const isRet = idx['Trip Type'] !== undefined && r[idx['Trip Type']] === 'Return';
+      const prefCell = earliestI !== undefined ? prefPickupCell(r, idx, notes, apptVal || (estPUI !== undefined ? r[estPUI] : null), isRet, apptVal) : null;
+      if (prefCell) {
+        r[earliestI] = prefCell;
+        noteApptTime(r, apptVal, notesI);
+        stats.prefPU++;
+      } else if (isWillCall(r, idx)) {
         // Will-calls keep existing behavior: pickup = Estimated Pickup, mirrored into Appointment Time.
         r[apptI] = r[earliestI];
         stats.willCall++;
@@ -764,6 +806,7 @@ function _doProcess() {
     document.getElementById('breakdown').innerHTML = `<h3>Breakdown</h3>
       ${_compareRows}
       <div class="breakdown-row"><span class="desc">Will call trips created</span>${_bar(stats.willCall, stats.total)}<span class="count">${stats.willCall}</span></div>
+      <div class="breakdown-row"><span class="desc">Preferred pick-up time used</span>${_bar(stats.prefPU, stats.total)}<span class="count">${stats.prefPU}</span></div>
       <div class="breakdown-row"><span class="desc">Wheelchair / Ambulatory (7115)</span>${_bar(stats.wheelchair, stats.total)}<span class="count">${stats.wheelchair}</span></div>
       <div class="breakdown-row"><span class="desc">Medical Companion (7115C)</span>${_bar(stats.medComp, stats.total)}<span class="count">${stats.medComp}</span></div>
       <div class="breakdown-row"><span class="desc">Stretcher (7114)</span>${_bar(stats.stretcher, stats.total)}<span class="count">${stats.stretcher}</span></div>
@@ -803,32 +846,42 @@ const SCHED_ACCOUNT_FILL = {
   '7114':      'FFD9D9D9', // 7114 SDVA Gurney Veterans     — gray
   '7115':      'FFFFFF00', // 7115 SDVA Wheelchair Veterans — yellow
   'companion': 'FF92D050', // 7115c (…Companion Veterans)   — green
-  'sol':       'FFF2F2F2', // 100  (Sol Transportation)     — light gray
+  'sol':       'FFF2F2F2', // 100  (Sol Transportation)     — light gray (SDVA helpers only)
   'pace':      'FFFCD5B5', // 250s (PACE SOUTH)             — light orange
-  'private':   'FFBDD7EE'  // Private Pay                   — light blue
+  'fhc':       'FFE4DFEC'  // 806  (806 FHC-WC)             — light purple (gurneys only)
 };
 // PACE SOUTH (250s) with Stretcher mobility gets a darker (still readable) orange.
 const SCHED_PACE_STRETCHER_FILL = 'FFF4B183';
 // Recognize an account from the Payer text — tolerant of naming variants
 // (e.g. "Companion Veterans" vs "SDVA Companion Veterans"). null = not exported.
+// Everything else is dropped: LBVA (7117/7118), LB Veteran Private Pay, Private Pay, NCTD, …
 function schedAccountId(payer) {
   const p = String(payer == null ? '' : payer);
+  if (/7115\s*c\b|companion/i.test(p)) return 'companion';
   if (/7114/.test(p)) return '7114';
   if (/7115/.test(p)) return '7115';
-  if (/companion/i.test(p)) return 'companion';
   if (/sol\s*transp/i.test(p)) return 'sol';
   if (/pace\s*south/i.test(p)) return 'pace';
-  if (/private\s*pay/i.test(p)) return 'private';
+  if (/\b806\b|\bfhc\b/i.test(p)) return 'fhc';
   return null;
 }
+function schedIsGurney(mode) { return /stretcher|gurney/i.test(String(mode || '')); }
 function schedFill(acctId, mode) {
-  if (acctId === 'pace' && /stretcher/i.test(String(mode || ''))) return SCHED_PACE_STRETCHER_FILL;
+  if (acctId === 'pace' && schedIsGurney(mode)) return SCHED_PACE_STRETCHER_FILL;
   return SCHED_ACCOUNT_FILL[acctId] || null;
 }
-// 250s (PACE SOUTH): keep only early trips with Scheduled PU 02:00–07:00 inclusive,
-// EXCEPT Stretcher-mobility trips, which are kept regardless of time.
-const SCHED_EARLY_FROM = 2 / 24;   // 02:00
-const SCHED_EARLY_TO   = 7 / 24;   // 07:00
+// "Assigned" / "Pre-Assigned" (but not "Unassigned") — already given to a driver.
+function schedIsTaken(status) {
+  const s = String(status || '').toLowerCase();
+  return /pre[\s-]*assigned/.test(s) || (/assigned/.test(s) && !/unassigned/.test(s));
+}
+// Which trips go in the export:
+//   SDVA 7114 / 7115 / 7115C — all of them.
+//   100 Sol Transportation — only helper copies for an SDVA trip (same passenger as a
+//     7114/7115/7115C row in this report); LBVA helpers sit next to a 7117 trip and drop out.
+//   806 FHC and 250s St Paul's PACE — gurney (Stretcher) trips at any time, any status.
+//   250s St Paul's PACE wheelchair / ambulatory — only before 05:00 and not assigned or pre-assigned.
+const SCHED_PACE_BEFORE = 5 / 24;  // 05:00
 const SCHED_SRC  = ['Status','Scheduled PU','Payer','Mode','Passenger name','PU Address','DO Address']; // required report headers
 let scheduleBlob = null, scheduleName = 'Schedule.xlsx';
 
@@ -875,6 +928,7 @@ function clearReport() {
 
 // "02:45 AM" -> Excel time fraction (0..1); null if unparseable
 function schedTimeFrac(s) {
+  if (typeof s === 'number' && isFinite(s)) return Math.round((s % 1) * 1440) / 1440; // Excel time/date serial
   const m = String(s == null ? '' : s).trim().match(/^(\d{1,2}):(\d{2})\s*([AaPp][Mm])?$/);
   if (!m) return null;
   let h = +m[1]; const min = +m[2]; const ap = m[3] ? m[3].toUpperCase() : null;
@@ -911,6 +965,15 @@ function buildSchedule(rows) {
   const iStatus = idx['Status'], iSched = idx['Scheduled PU'], iPayer = idx['Payer'],
         iMode = idx['Mode'], iPax = idx['Passenger name'], iPU = idx['PU Address'], iDO = idx['DO Address'];
 
+  // Passengers with an SDVA trip in this report — a payer-100 row for one of them is an SDVA helper.
+  const paxKey = v => String(v == null ? '' : v).toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(Boolean).sort().join(' ');
+  const sdvaPax = new Set();
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r] || [];
+    const a = schedAccountId(row[iPayer]);
+    if ((a === '7114' || a === '7115' || a === 'companion') && paxKey(row[iPax])) sdvaPax.add(paxKey(row[iPax]));
+  }
+
   const timed = [], willCall = [];
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r] || [];
@@ -920,10 +983,13 @@ function buildSchedule(rows) {
     // Keep only the configured accounts; drop everything else
     const acctId = schedAccountId(payer);
     if (!acctId) continue;
-    // 250s (PACE SOUTH): early trips 02:00–07:00 only, unless Stretcher mobility
-    if (acctId === 'pace' && !/stretcher/i.test(String(row[iMode] || ''))) {
+    const gurney = schedIsGurney(row[iMode]);
+    if (acctId === 'sol' && !sdvaPax.has(paxKey(pax))) continue;   // 100: SDVA helpers only
+    if (acctId === 'fhc' && !gurney) continue;                     // 806: gurneys only
+    if (acctId === 'pace' && !gurney) {                            // 250s WC/amb: before 5 AM, still open
       const ef = schedTimeFrac(row[iSched]);
-      if (ef == null || ef < SCHED_EARLY_FROM - 1e-9 || ef > SCHED_EARLY_TO + 1e-9) continue;
+      if (ef == null || ef >= SCHED_PACE_BEFORE - 1e-9) continue;
+      if (schedIsTaken(row[iStatus])) continue;
     }
     const base = [null, payer, row[iMode], pax, pu, doAddr, null, null, null];
     const fillColor = schedFill(acctId, row[iMode]);
