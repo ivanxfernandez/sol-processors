@@ -595,7 +595,7 @@ function _doProcess() {
 
     const rows7114 = [], rows7115 = [], rows7115c = [];
     const stats = { total: 0, willCall: 0, prefPU: 0, stretcher: 0, medComp: 0, wheelchair: 0, modified: 0 };
-    const alerts = { bariatric: [], waitReturn: [], outOfState: [], longDistance: [], modified: [], removed: [], nowCanceled: [] };
+    const alerts = { bariatric: [], waitReturn: [], outOfState: [], longDistance: [], modified: [], removed: [], nowCanceled: [], skipped: [] };
     // Populate diff-derived alerts
     if (diffResult) {
       for (const { row: oldRow, idx: oldIdx } of diffResult.removed) {
@@ -630,8 +630,24 @@ function _doProcess() {
       const rawMob  = mobilityI !== undefined ? row[mobilityI] : null;
       const distVal = distI !== undefined ? parseFloat(row[distI]) : NaN;
 
-      if (status && String(status).toLowerCase() === 'canceled') { canceledCount++; continue; }
-      if (apptVal && String(apptVal).trim().toUpperCase() === 'N/A') { canceledCount++; continue; }
+      // Canceled / N/A rows are skipped (not exported) — list them by name so they can be checked.
+      const isCx = status && String(status).toLowerCase() === 'canceled';
+      const isNA = !isCx && apptVal && String(apptVal).trim().toUpperCase() === 'N/A';
+      if (isCx || isNA) {
+        canceledCount++;
+        const p = idx['Passenger'] !== undefined ? row[idx['Passenger']] : 'Unknown';
+        const t = idx['Trip Type'] !== undefined ? row[idx['Trip Type']] : '';
+        const m = mobilityI !== undefined ? row[mobilityI] : '';
+        const tm = String(apptVal || edtVal || '').match(/\s(\d{1,2}:\d{2}):\d{2}\s[+-]\d{4}$/);
+        const why = isCx ? 'canceled in VetRide' : 'appointment N/A';
+        // Compare mode: a skipped row is either new in this file (canceled before it was ever uploaded)
+        // or was already canceled in the older file (skipped then too) → it was never added to RG.
+        const where = !diffResult ? ' — not exported'
+          : (diffResult.newKeys.has(rowKey) ? ' — never added to RG (new in this file, already canceled)'
+                                            : ' — never added to RG (already canceled in the older file)');
+        alerts.skipped.push(`${cleanName(p) || p} (${t}, ${m || 'unknown'}${tm ? ', ' + tm[1] : ''}) — ${why}${where}`);
+        continue;
+      }
 
       if (!fileDate) {
         const ref = edtVal || apptVal;
@@ -737,7 +753,7 @@ function _doProcess() {
     if (document.getElementById('alertSearch')) document.getElementById('alertSearch').value = '';
 
     // Show alerts if any
-    if (alerts.bariatric.length > 0 || alerts.waitReturn.length > 0 || alerts.outOfState.length > 0 || alerts.longDistance.length > 0 || alerts.modified.length > 0 || alerts.removed.length > 0 || alerts.nowCanceled.length > 0) {
+    if (alerts.bariatric.length > 0 || alerts.waitReturn.length > 0 || alerts.outOfState.length > 0 || alerts.longDistance.length > 0 || alerts.modified.length > 0 || alerts.removed.length > 0 || alerts.nowCanceled.length > 0 || alerts.skipped.length > 0) {
       const ICON_WARN = '<svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
       const ICON_CLOCK = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
       const ICON_MAP = '<svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>';
@@ -762,6 +778,14 @@ function _doProcess() {
         alerts.nowCanceled.forEach(n => { alertHtml += `<div class="alert-item">${_esc(n)}</div>`; });
         alertHtml += '</div>';
         toast(alerts.nowCanceled.length + ' trip' + (alerts.nowCanceled.length === 1 ? '' : 's') + ' canceled in VetRide — cancel in RG', 'warning', 8000);
+      }
+      if (alerts.skipped.length > 0) {
+        alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_BAN}Cancelled / skipped — not in the download (${alerts.skipped.length})</div>`;
+        alertHtml += diffResult
+          ? `<div class="alert-item" style="font-style:italic;opacity:.8">These were never added to RouteGenie — nothing to cancel there.</div>`
+          : `<div class="alert-item" style="font-style:italic;opacity:.8">Left out of the download files. If one was uploaded from an earlier file, check RouteGenie.</div>`;
+        alerts.skipped.forEach(n => { alertHtml += `<div class="alert-item">${_esc(n)}</div>`; });
+        alertHtml += '</div>';
       }
       if (alerts.longDistance.length > 0) {
         alertHtml += `<div class="alert-section"><div class="alert-title">${ICON_DIST}Long-distance trips &gt;100 mi (${alerts.longDistance.length})</div>`;
