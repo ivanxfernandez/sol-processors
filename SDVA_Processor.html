@@ -899,7 +899,9 @@ function schedIsTaken(status) {
   const s = String(status || '').toLowerCase();
   return /pre[\s-]*assigned/.test(s) || (/assigned/.test(s) && !/unassigned/.test(s));
 }
-// Which trips go in the export:
+// "Canceled" / "Cancelled" (any status text containing "cancel").
+function schedIsCanceled(status) { return /cancel/i.test(String(status || '')); }
+// Which trips go in the export (cancelled trips never do):
 //   SDVA 7114 / 7115 / 7115C — all of them.
 //   100 Sol Transportation — only helper copies for an SDVA trip (same passenger as a
 //     7114/7115/7115C row in this report); LBVA helpers sit next to a 7117 trip and drop out.
@@ -994,6 +996,7 @@ function buildSchedule(rows) {
   const sdvaPax = new Set();
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r] || [];
+    if (schedIsCanceled(row[iStatus])) continue;   // a cancelled SDVA trip doesn't make its helper copy count
     const a = schedAccountId(row[iPayer]);
     if ((a === '7114' || a === '7115' || a === 'companion') && paxKey(row[iPax])) sdvaPax.add(paxKey(row[iPax]));
   }
@@ -1004,6 +1007,8 @@ function buildSchedule(rows) {
     const payer = row[iPayer], pax = row[iPax], pu = row[iPU], doAddr = row[iDO];
     // skip blank/trailing rows
     if ([payer, pax, pu, doAddr, row[iStatus], row[iSched]].every(v => v == null || v === '')) continue;
+    // Cancelled trips never go in the export, whatever the payer
+    if (schedIsCanceled(row[iStatus])) continue;
     // Keep only the configured accounts; drop everything else
     const acctId = schedAccountId(payer);
     if (!acctId) continue;
