@@ -502,12 +502,10 @@ function setIncomingPickup(r, apptVal, notes, distVal, doAddr, earliestI, apptI,
   const noteAppt = () => noteApptTime(r, apptVal, notesI);
   let totalMins = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]);
   let offset;
-  if (!isNaN(distVal)) {
-    if (distVal > 80)        offset = 180;  //  >80 mi → 3 hr
-    else if (distVal > 25)   offset = 120;  //  25–80 → 2 hr
-    // ≤25 mi: outside appointments (dropoff is not SDVA La Jolla) → 1 hr; SDVA-bound → 2 hr
-    else                     offset = !isSDVA(doAddr) ? 60 : 120;
-  } else offset = 120;                       // unknown → 2 hr
+  // Ivan 10/28: up to 80 mi → 2 hr before the appointment, for every destination
+  // (the old 1 hr lead for outside appointments ≤25 mi is gone).
+  if (!isNaN(distVal) && distVal > 80) offset = 180;  //  >80 mi → 3 hr
+  else                                  offset = 120;  //  ≤80 mi or unknown → 2 hr
   totalMins -= offset;
   if (totalMins < 0) totalMins += 1440;
   const hh = String(Math.floor(totalMins/60)).padStart(2,'0');
